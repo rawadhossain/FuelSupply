@@ -10,7 +10,7 @@ NODEIMG := node:20-alpine
 # Runs as the caller's uid so files written into the mount are not root-owned.
 DRUN    := MSYS_NO_PATHCONV=1 docker run --rm -u $(shell id -u):$(shell id -g) -e HOME=/tmp            -e PYTHONDONTWRITEBYTECODE=1 -v "$(CURDIR)":/src -w /src
 
-.PHONY: help up down nuke logs ps test lint smoke demo-reset
+.PHONY: help up down nuke logs ps test lint smoke demo-reset demo-load demo-load-chaos
 
 help: ## List targets
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-8s %s\n", $$1, $$2}'
@@ -69,3 +69,9 @@ evidence: ## Print files under docs/evidence
 
 dispatch: ## Run the temporary baseline-dispatch stand-in
 	python ops/scenario-runner/scenario.py baseline-dispatch $(ARGS)
+
+demo-load: ## Section 17 one-command load-test demo (~2 min, k6 via docker)
+	bash scripts/demo-load.sh $(ARGS)
+
+demo-load-chaos: ## Same as demo-load, plus a 15s intelligence outage mid-run
+	bash scripts/demo-load.sh --chaos $(ARGS)
