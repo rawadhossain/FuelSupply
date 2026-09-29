@@ -10,7 +10,7 @@ NODEIMG := node:20-alpine
 # Runs as the caller's uid so files written into the mount are not root-owned.
 DRUN    := MSYS_NO_PATHCONV=1 docker run --rm -u $(shell id -u):$(shell id -g) -e HOME=/tmp            -e PYTHONDONTWRITEBYTECODE=1 -v "$(CURDIR)":/src -w /src
 
-.PHONY: help up down nuke logs ps test lint smoke
+.PHONY: help up down nuke logs ps test lint smoke demo-reset
 
 help: ## List targets
 	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-8s %s\n", $$1, $$2}'
@@ -43,3 +43,9 @@ lint: ## ruff (backend) and eslint (frontend), in Docker
 
 smoke: ## Health-check the running stack (waits up to 120s)
 	bash scripts/smoke.sh
+
+demo-reset: ## Reset the simulator for a fresh demo run (reset, clear faults, run)
+	curl -sf -X POST http://localhost:$${SIMULATOR_PORT:-8000}/admin/reset >/dev/null
+	curl -sf -X POST http://localhost:$${SIMULATOR_PORT:-8000}/admin/faults/clear >/dev/null
+	curl -sf -X POST http://localhost:$${SIMULATOR_PORT:-8000}/admin/run >/dev/null
+	@echo "Simulator reset and running."
