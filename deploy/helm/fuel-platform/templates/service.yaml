@@ -1,0 +1,24 @@
+{{- range $name, $svc := .Values.services }}
+{{- $svcName := $name | lower }}
+{{- if ne $svcName "coreworker" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $svcName }}
+  labels:
+    app: {{ $svcName }}
+spec:
+  type: {{ if and (eq $svcName "frontend") $svc.serviceType }}{{ $svc.serviceType }}{{ else }}ClusterIP{{ end }}
+  selector:
+    app: {{ $svcName }}
+  ports:
+    - port: {{ $svc.port }}
+      targetPort: {{ $svc.port }}
+      protocol: TCP
+      name: http
+      {{- if and (eq $svcName "frontend") (eq $svc.serviceType "NodePort") }}
+      nodePort: 30080
+      {{- end }}
+{{- end }}
+{{- end }}

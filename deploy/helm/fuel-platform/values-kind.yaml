@@ -1,0 +1,78 @@
+# Local kind cluster overrides. Images are built and `kind load docker-image`d
+# by scripts/k8s-up.sh under these repository:tag names.
+
+global:
+  gitSha: dev
+
+services:
+  core:
+    image:
+      repository: fuel-platform/core
+      tag: dev
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    autoscaling:
+      enabled: false
+
+  intelligence:
+    image:
+      repository: fuel-platform/intelligence
+      tag: dev
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    autoscaling:
+      enabled: true
+      min: 2
+      max: 4
+      cpuTarget: 60
+
+  frontend:
+    image:
+      repository: fuel-platform/frontend
+      tag: dev
+      pullPolicy: IfNotPresent
+    serviceType: NodePort
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  simulator:
+    image:
+      pullPolicy: IfNotPresent
+
+  simExporter:
+    image:
+      repository: fuel-platform/sim-exporter
+      tag: dev
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+  grafanaDashboards:
+    enabled: true

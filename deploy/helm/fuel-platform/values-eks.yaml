@@ -1,0 +1,110 @@
+# EKS overrides. Replace <owner>/<repo> with the actual GHCR path — set by CI
+# (.github/workflows/deploy-eks.yml) or manually before a real install.
+
+global:
+  gitSha: dev
+
+services:
+  core:
+    image:
+      repository: ghcr.io/<owner>/<repo>/core
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 2
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    autoscaling:
+      enabled: true
+      min: 2
+      max: 4
+      cpuTarget: 70
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  intelligence:
+    image:
+      repository: ghcr.io/<owner>/<repo>/intelligence
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 2
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+    autoscaling:
+      enabled: true
+      min: 2
+      max: 6
+      cpuTarget: 60
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  frontend:
+    image:
+      repository: ghcr.io/<owner>/<repo>/frontend
+      tag: latest
+      pullPolicy: IfNotPresent
+    replicas: 2
+    serviceType: ClusterIP
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  simExporter:
+    image:
+      repository: ghcr.io/<owner>/<repo>/sim-exporter
+      tag: latest
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+
+ingress:
+  enabled: true
+  className: alb
+  host: fuel-platform.example.com
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+  grafanaDashboards:
+    enabled: true
+
+postgres:
+  storage:
+    size: 10Gi
+    storageClassName: gp3
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi

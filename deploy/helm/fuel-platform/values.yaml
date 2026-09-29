@@ -1,0 +1,245 @@
+# Default values — override with values-kind.yaml or values-eks.yaml.
+
+global:
+  gitSha: dev
+  logLevel: INFO
+  logFormat: json
+
+postgres:
+  user: fuelsupply
+  password: fuelsupply
+  db: fuelsupply
+  image:
+    repository: postgres
+    tag: 16-alpine
+  port: 5432
+  storage:
+    size: 1Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+redis:
+  image:
+    repository: redis
+    tag: 7-alpine
+  port: 6379
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+secrets:
+  # Set existingSecret to reuse a pre-created Secret instead of generating one.
+  existingSecret: ""
+  postgresPassword: fuelsupply
+  # OpenAI key used by the intelligence service (ADR-005). Never commit a real
+  # value here — leave blank to force the templated-narration fallback.
+  openaiApiKey: ""
+
+services:
+  core:
+    image:
+      repository: fuel-platform/core
+      tag: dev
+      pullPolicy: IfNotPresent
+    port: 8100
+    replicas: 1
+    env:
+      SIMULATOR_BASE_URL: http://simulator:8000
+      INTELLIGENCE_BASE_URL: http://intelligence:8200
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    probes:
+      liveness:
+        path: /health
+      readiness:
+        path: /ready
+    autoscaling:
+      enabled: false
+      min: 1
+      max: 3
+      cpuTarget: 70
+    pdb:
+      enabled: false
+      minAvailable: 1
+
+  # Enable once the backend implements CORE_ROLE=api|worker so that scaling
+  # `core` doesn't duplicate the ingestion poller across replicas.
+  coreWorker:
+    enabled: false
+    image:
+      repository: fuel-platform/core
+      tag: dev
+      pullPolicy: IfNotPresent
+    replicas: 1
+    env:
+      CORE_ROLE: worker
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  intelligence:
+    image:
+      repository: fuel-platform/intelligence
+      tag: dev
+      pullPolicy: IfNotPresent
+    port: 8200
+    replicas: 2
+    env:
+      INTEL_POLICY: heuristic
+      OPENAI_MODEL: gpt-5.4-mini
+      LLM_TIMEOUT_SECONDS: "8"
+      LLM_MAX_OUTPUT_TOKENS: "400"
+      MODEL_VERSION: profile-v1
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    probes:
+      liveness:
+        path: /health
+      readiness:
+        path: /ready
+    autoscaling:
+      enabled: true
+      min: 2
+      max: 6
+      cpuTarget: 60
+    pdb:
+      enabled: true
+      minAvailable: 1
+
+  frontend:
+    image:
+      repository: fuel-platform/frontend
+      tag: dev
+      pullPolicy: IfNotPresent
+    port: 8080
+    replicas: 1
+    serviceType: ClusterIP
+    env:
+      CORE_UPSTREAM: http://core:8100
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    probes:
+      liveness:
+        path: /nginx-health
+      readiness:
+        path: /nginx-health
+    autoscaling:
+      enabled: false
+      min: 1
+      max: 3
+      cpuTarget: 70
+    pdb:
+      enabled: false
+      minAvailable: 1
+
+  simulator:
+    image:
+      repository: asifmahmoud414/bup-fuel-supply-simulator
+      tag: "1.0.0"
+      pullPolicy: IfNotPresent
+    port: 8000
+    replicas: 1
+    env:
+      SIMULATION_SPEED: "1"
+      TICK_MINUTES: "15"
+      SIMULATOR_START_MODE: paused
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    probes:
+      liveness:
+        path: /v1/health
+      readiness:
+        path: /v1/health
+    autoscaling:
+      enabled: false
+      min: 1
+      max: 1
+      cpuTarget: 70
+    pdb:
+      enabled: false
+      minAvailable: 1
+
+  simExporter:
+    image:
+      repository: fuel-platform/sim-exporter
+      tag: dev
+      pullPolicy: IfNotPresent
+    port: 9101
+    replicas: 1
+    env:
+      SIMULATOR_BASE_URL: http://simulator:8000
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    probes:
+      liveness:
+        path: /healthz
+      readiness:
+        path: /healthz
+    autoscaling:
+      enabled: false
+      min: 1
+      max: 1
+      cpuTarget: 70
+    pdb:
+      enabled: false
+      minAvailable: 1
+
+ingress:
+  enabled: false
+  className: ""
+  host: fuel-platform.local
+  annotations: {}
+  tls: []
+
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+  prometheusRule:
+    enabled: false
+  grafanaDashboards:
+    enabled: false

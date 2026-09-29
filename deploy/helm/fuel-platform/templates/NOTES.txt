@@ -1,0 +1,15 @@
+Fuel platform installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+Port-forward the frontend:
+  kubectl port-forward svc/frontend 8080:{{ .Values.services.frontend.port }} -n {{ .Release.Namespace }}
+
+Port-forward core / intelligence directly (debugging):
+  kubectl port-forward svc/core 8100:{{ .Values.services.core.port }} -n {{ .Release.Namespace }}
+  kubectl port-forward svc/intelligence 8200:{{ .Values.services.intelligence.port }} -n {{ .Release.Namespace }}
+
+Watch autoscaling:
+  kubectl get hpa -n {{ .Release.Namespace }} -w
+
+If installed with the kind values file, kube-prometheus-stack is expected in
+the same cluster (see scripts/k8s-up.sh) — Grafana/Prometheus are reachable
+via their own NodePorts, not through this chart.

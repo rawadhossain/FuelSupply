@@ -1,0 +1,58 @@
+name: K8s validate
+
+on:
+  push:
+    paths:
+      - "deploy/**"
+  pull_request:
+    paths:
+      - "deploy/**"
+
+permissions:
+  contents: read
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: helm lint
+        run: |
+          helm lint deploy/helm/fuel-platform -f deploy/helm/fuel-platform/values-kind.yaml
+          helm lint deploy/helm/fuel-platform -f deploy/helm/fuel-platform/values-eks.yaml
+
+      - name: helm template
+        run: |
+          helm template deploy/helm/fuel-platform -f deploy/helm/fuel-platform/values-kind.yaml > /tmp/kind.yaml
+          helm template deploy/helm/fuel-platform -f deploy/helm/fuel-platform/values-eks.yaml > /tmp/eks.yaml
+
+      - name: kubeconform
+        run: |
+          docker run --rm -v /tmp:/tmp ghcr.io/yannh/kubeconform:latest \
+            -summary -ignore-missing-schemas \
+            -skip ServiceMonitor,PrometheusRule \
+            /tmp/kind.yaml /tmp/eks.yaml
+
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy/terraform/eks
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: terraform init (no backend)
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        run: terraform validate
