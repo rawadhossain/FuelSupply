@@ -1,0 +1,7 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+ignore = [
+  "EXE002", # executable bit on source files is a Windows/git filesystem artifact here, not a real issue
+]
