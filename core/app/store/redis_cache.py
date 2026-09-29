@@ -15,6 +15,8 @@ import redis.asyncio as redis
 from app.ingestion.state import NetworkState
 
 STATE_KEY = "fuelsupply:network_state"
+REC_KEY_PREFIX = "fuelsupply:rec:"
+REC_TTL_SECONDS = 900  # long enough to review, short enough not to accumulate stale approvals
 
 
 class RedisStateCache:
@@ -48,3 +50,21 @@ class RedisStateCache:
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+    # ---- Issued-recommendation cache -----------------------------------
+    #
+    # /internal/recommendations issues recommendations and caches each one
+    # here by id; /internal/allocations/execute looks the id up rather than
+    # trusting a client-echoed `review` field, so the human-review gate
+    # (REQ-009c/REQ-019) can't be bypassed just by posting a different
+    # value than what was actually shown to the operator.
+
+    async def cache_recommendation(self, rec_id: str, rec: dict) -> None:
+        await self._client.set(f"{REC_KEY_PREFIX}{rec_id}", json.dumps(rec), ex=REC_TTL_SECONDS)
+
+    async def get_recommendation(self, rec_id: str) -> dict | None:
+        raw = await self._client.get(f"{REC_KEY_PREFIX}{rec_id}")
+        return json.loads(raw) if raw else None
+
+    async def consume_recommendation(self, rec_id: str) -> None:
+        await self._client.delete(f"{REC_KEY_PREFIX}{rec_id}")
