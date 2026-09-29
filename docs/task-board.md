@@ -36,6 +36,7 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 ## IN PROGRESS
 | ID | Req | Description | Owner | Depends on | Files / components | Acceptance criteria |
 |---|---|---|---|---|---|---|
+| TASK-037 | REQ-013, 014, 026 | Monitoring infra: simulator healthcheck, `sim-exporter`, Loki/Alloy log pipeline, cAdvisor + postgres/redis exporters, Prometheus scrape+rules, Alertmanager, Loki/Alertmanager Grafana datasources | OPS (Claude, this session) | TASK-031 | `docker-compose.yml`, `ops/sim-exporter`, `ops/prometheus`, `ops/alertmanager`, `ops/grafana` | `promtool`/`amtool` config checks pass; new containers healthy; targets up; ServiceDown fires on `intelligence` stop; evidence in `docs/verification.md` |
 
 ## BLOCKED
 
