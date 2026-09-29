@@ -2,11 +2,19 @@ services:
   simulator-api:
     image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
     environment:
-      SIMULATION_SPEED: ${SIMULATION_SPEED:-8}
+      # Demo default: 1 tick ~= 1 wall-clock second, easier to narrate live. Was 8.
+      SIMULATION_SPEED: ${SIMULATION_SPEED:-1}
       TICK_MINUTES: ${TICK_MINUTES:-15}
       SIMULATOR_START_MODE: ${SIMULATOR_START_MODE:-paused}
     ports:
-      - "${SIMULATOR_PORT:-8000}:8000"
+      - "127.0.0.1:${SIMULATOR_PORT:-8000}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   postgres:
     image: postgres:16-alpine
@@ -17,7 +25,8 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fuelsupply}"]
       interval: 5s
@@ -27,7 +36,8 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -38,16 +48,20 @@ services:
     build:
       context: .
       dockerfile: core/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     environment:
-      SIMULATOR_BASE_URL: http://simulator-api:8000
+      SIMULATOR_BASE_URL: ${SIMULATOR_BASE_URL:-http://simulator-api:8000}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fuelsupply}:${POSTGRES_PASSWORD:-fuelsupply}@postgres:5432/${POSTGRES_DB:-fuelsupply}
-      REDIS_URL: redis://redis:6379/0
-      INTELLIGENCE_BASE_URL: http://intelligence:8200
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://intelligence:8200}
     ports:
       - "${CORE_PORT:-8100}:8100"
+    restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       simulator-api:
-        condition: service_started
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -63,11 +77,19 @@ services:
     build:
       context: .
       dockerfile: intelligence/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      INTEL_POLICY: ${INTEL_POLICY:-heuristic}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-8}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-400}
+      MODEL_VERSION: ${MODEL_VERSION:-profile-v1}
     ports:
       - "${INTELLIGENCE_PORT:-8200}:8200"
+    restart: unless-stopped
+    mem_limit: 1g
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/health', timeout=3)"]
       interval: 5s
@@ -77,32 +99,43 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     environment:
-      VITE_CORE_BASE_URL: ${VITE_CORE_BASE_URL:-http://localhost:8100}
+      CORE_UPSTREAM: ${CORE_UPSTREAM:-http://core:8100}
     ports:
-      - "${FRONTEND_PORT:-5173}:5173"
+      - "${FRONTEND_PORT:-8080}:8080"
+    restart: unless-stopped
+    mem_limit: 128m
     depends_on:
       core:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:5173').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/nginx-health"]
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 15s
+      start_period: 5s
 
   prometheus:
     image: prom/prometheus:v2.55.1
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-remote-write-receiver"
     volumes:
-      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       core:
         condition: service_healthy
       intelligence:
+        condition: service_healthy
+      alertmanager:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
@@ -110,18 +143,126 @@ services:
       timeout: 3s
       retries: 10
 
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./ops/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  loki:
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    volumes:
+      - ./ops/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  alloy:
+    image: grafana/alloy:v1.4.3
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    volumes:
+      - ./ops/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:${ALLOY_PORT:-12345}:12345"
+    restart: unless-stopped
+    mem_limit: 256m
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "127.0.0.1:${CADVISOR_PORT:-8081}:8080"
+    restart: unless-stopped
+    mem_limit: 256m
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-fuelsupply}:${POSTGRES_PASSWORD:-fuelsupply}@postgres:5432/${POSTGRES_DB:-fuelsupply}?sslmode=disable
+    ports:
+      - "127.0.0.1:${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "127.0.0.1:${REDIS_EXPORTER_PORT:-9121}:9121"
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  sim-exporter:
+    build:
+      context: ./ops/sim-exporter
+      dockerfile: Dockerfile
+    environment:
+      SIMULATOR_BASE_URL: ${SIMULATOR_BASE_URL:-http://simulator-api:8000}
+    ports:
+      - "127.0.0.1:${SIM_EXPORTER_PORT:-9101}:9101"
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      simulator-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9101/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   grafana:
     image: grafana/grafana:11.2.0
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/fuel-command.json
     volumes:
       - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
     ports:
       - "${GRAFANA_PORT:-3000}:3000"
+    restart: unless-stopped
     depends_on:
       prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      alertmanager:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
@@ -132,3 +273,5 @@ services:
 volumes:
   postgres-data:
   grafana-data:
+  prometheus-data:
+  loki-data:

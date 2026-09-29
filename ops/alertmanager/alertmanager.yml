@@ -1,0 +1,9 @@
+route:
+  receiver: default
+  group_by: ["alertname"]
+  group_wait: 0s
+  group_interval: 10s
+  repeat_interval: 1h
+
+receivers:
+  - name: default

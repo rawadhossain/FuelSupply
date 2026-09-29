@@ -1,0 +1,7 @@
+id,name,region_id,status,dispatch_capacity_per_tick,fuel_type,capacity,inventory_at_export
+depot-gazipur,Gazipur Depot,region-dhaka,OPEN,12000.0,DIESEL,90000,90000.0
+depot-gazipur,Gazipur Depot,region-dhaka,OPEN,12000.0,PETROL,70000,70000.0
+depot-gazipur,Gazipur Depot,region-dhaka,OPEN,12000.0,OCTANE,45000,45000.0
+depot-patiya,Patiya Depot,region-chattogram,OPEN,11000.0,DIESEL,85000,85000.0
+depot-patiya,Patiya Depot,region-chattogram,OPEN,11000.0,PETROL,65000,65000.0
+depot-patiya,Patiya Depot,region-chattogram,OPEN,11000.0,OCTANE,40000,40000.0

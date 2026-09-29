@@ -1,10 +1,41 @@
+# Never enter an image: VCS data, secrets, local envs
 .git
+.gitattributes
 .github
+.env
+.env.*
+!.env.example
+**/.venv
+**/venv
+*.pem
+*.key
+
+# Not needed by any backend image (frontend builds with context ./frontend)
+frontend
 docs
-node_modules
-frontend/dist
+templates
+ops
+*.md
+.claude
+CLAUDE.md
+*.bat
+
+# Large offline training data / dev tooling — not needed by any backend image
+dataset
+loadtest
+
+# Intelligence dev/eval artifacts — keep the actual model (artifacts/profile-v1), drop the rest
+intelligence/tests
+intelligence/artifacts/replay_*.json
+intelligence/artifacts/benchmark_*
+intelligence/artifacts/demo_rehearsal.md
+intelligence/artifacts/genai_demo_output.json
+
+# Build/test artifacts
+**/node_modules
+**/dist
 **/__pycache__
 **/*.pyc
-.venv
-venv
-.env
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
