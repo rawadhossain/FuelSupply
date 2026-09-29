@@ -79,8 +79,12 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-dev}
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      INTEL_POLICY: ${INTEL_POLICY:-heuristic}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4-mini}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-8}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-400}
+      MODEL_VERSION: ${MODEL_VERSION:-profile-v1}
     ports:
       - "${INTELLIGENCE_PORT:-8200}:8200"
     restart: unless-stopped

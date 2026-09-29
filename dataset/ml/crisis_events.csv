@@ -1,0 +1,7 @@
+id,type,start_tick,end_tick,status,parameters
+1,demand_spike,100,148,RESOLVED,"{""region_ids"": [""region-dhaka""], ""multiplier"": 1.8}"
+2,demand_spike,250,274,RESOLVED,"{""station_ids"": [""station-karnaphuli""], ""multiplier"": 2.5}"
+3,station_outage,350,382,RESOLVED,"{""station_ids"": [""station-coxsbazar""]}"
+4,demand_spike,480,528,RESOLVED,"{""multiplier"": 1.4}"
+5,route_disruption,480,528,RESOLVED,"{""route_ids"": [""route-gazipur-mirpur""]}"
+6,demand_spike,600,640,RESOLVED,"{""station_ids"": [""station-tongi""], ""multiplier"": 1.3}"

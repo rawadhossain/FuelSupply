@@ -1,0 +1,43 @@
+{
+  "tick": 121,
+  "recommendation": {
+    "template": "station-tongi Diesel: projected stockout in 0.25 h; expected demand next 24.0 h 19,053 L. Recommend 6,500 L from depot-gazipur via route-gazipur-tongi (arrives in 0.75 h). Stockout risk (next 24 h) 100% \u2192 100%; unmet next 24 h 18,575 \u2192 12,075 L. Limited by: route max_shipment 6,500 L. [Simulated environment]",
+    "text": "The station is at risk because the unmet diesel demand is 18,575.2 L before this action, and even after the allocation it still has 12,075.2 L unmet; the stockout risk stays at 0.25 h and the overflow stays at 7,000.0 L. The recommendation is to send 6,500.0 L from depot-gazipur via route-gazipur-tongi, which reduces unmet demand by 6,500.0 L, from 18,575.2 L to 12,075.2 L; the main alternative is do nothing. This is AUTO_ELIGIBLE, so it can be approved normally; caveats are the active/scheduled demand_spike and the short history since start/reset. [Simulated environment]",
+    "source": "llm"
+  },
+  "incident": {
+    "text": "A demand spike is active in region-dhaka from tick 100 to 148, and the Gazipur supplies for DIESEL, PETROL, and OCTANE are delayed by 40 ticks, so the near-term signal is tighter supply and rising stockout risk. The most urgent stations are station-tongi and station-mirpur: station-tongi is at high risk for DIESEL with 477.9 L and stockout in 0.25 hours, PETROL with 512.2 L and stockout in 0.75 hours, and OCTANE with 811.7 L and stockout in 3.0 hours; station-mirpur is at high risk for PETROL with 2919.1 L and stockout in 2.75 hours, and medium risk for DIESEL with 5357.1 L and stockout in 9.75 hours. The system recommends sending 6500.0 L DIESEL and 5500.0 L PETROL from depot-gazipur to station-tongi, and 5000.0 L PETROL from depot-patiya to station-mirpur; this would reduce projected unmet volume from 72791.0 L to 55791.0 L, but the Tongi DIESEL shortage and some overflow remain. Watch station-tongi first for immediate DIESEL and PETROL depletion, then station-mirpur PETROL, and keep an eye on the delayed Gazipur arrivals and the scheduled Patiya arrivals at tick 140, 144, and 148. [Simulated environment]",
+    "source": "llm",
+    "reason": null
+  },
+  "state": {
+    "text": "Network status is normal for all 3 fuels: DIESEL stock is 188867.1 L against 48002.8 L demand next 24 h, PETROL is 134882.6 L against 38369.1 L, and OCTANE is 86821.2 L against 20049.9 L.  \nTop risks are station-tongi DIESEL and PETROL, with stockout in 0.25 h and 0.75 h, plus station-mirpur PETROL in 2.75 h; station-karnaphuli DIESEL, PETROL, and OCTANE are also at risk.  \nActive events are a high demand_spike in region-dhaka from tick 100 to 148, and delayed supply from depot-gazipur for DIESEL, PETROL, and OCTANE, with planned ticks 168, 172, 176, 232, 236, and 240.  \nPending recommendations are 3: move 6500.0 L DIESEL to station-tongi, 5500.0 L PETROL to station-tongi, and 5000.0 L PETROL to station-mirpur; none need review.  \nBottlenecks are route_capacity, with 2 binding constraints, and depot-gazipur is at 1.0 dispatch utilisation.  \nProjected unmet is 72791.0 L in 24 h, or 55791.0 L with the plan, and overflow is 7000.0 L or 5000.0 L with the plan. [Simulated environment]",
+    "source": "llm",
+    "reason": null
+  },
+  "questions": [
+    {
+      "q": "Why is station-mirpur at risk right now, and what is being done about it?",
+      "text": "station-mirpur is at risk mainly because PETROL is projected to stock out in 2.75 hours, with 2919.1 L in inventory and 9545.3 L unmet in 24 hours; DIESEL is also at risk, with 5357.1 L in inventory, stockout in 9.75 hours, and 4758.3 L unmet in 24 hours. The pressure is being driven by the active demand spike in region-dhaka from tick 100 to 148, and the network also has delayed supply from depot-gazipur on supply-201 and supply-202, though those delays are not the direct Mirpur route in the facts. What is being done is a recommendation for station-mirpur PETROL: 5000.0 L from depot-patiya via route-patiya-mirpur, which would cut unmet PETROL from 9545.3 L to 4545.3 L and extend stockout timing from 2.75 hours to 12.0 hours. For station-mirpur DIESEL, the facts say it is not being addressed yet because it will be scheduled closer to the stockout. If you want a single operational summary, the current recommended action is the route-patiya-mirpur PETROL shipment; no action is listed yet for Mirpur DIESEL. [Simulated environment]",
+      "source": "llm",
+      "reason": null
+    },
+    {
+      "q": "Which depot is under the most pressure, and is any fuel type in network-wide shortage?",
+      "text": "The most pressured depot appears to be depot-gazipur, because it has depot-level supply delays for DIESEL, PETROL, and OCTANE, and its dispatch utilisation is 1.0 while depot-patiya is 0.455. The network does not show a systemic shortage for any fuel type: DIESEL, PETROL, and OCTANE all have systemic_shortage false. What is missing for a stricter depot ranking is a direct depot stock or depot backlog measure for depot-gazipur versus depot-patiya; the facts only show delayed supplies and one overflow risk at depot-gazipur for PETROL. [Simulated environment]",
+      "source": "llm",
+      "reason": null
+    }
+  ],
+  "stats": {
+    "llm_calls": 7,
+    "llm_ok": 7,
+    "llm_failed": 0,
+    "fallback_template": 0,
+    "rejected_unverified": 0,
+    "latency_p50_ms": 2427.2,
+    "latency_p95_ms": 2818.1,
+    "enabled": true,
+    "disabled_reason": null
+  }
+}

@@ -1,5 +1,6 @@
-from app.main import app
 from fastapi.testclient import TestClient
+
+from intelligence.service import app
 
 
 def test_health() -> None:

@@ -24,11 +24,14 @@ RUN groupadd --system --gid 10001 app  && useradd --system --uid 10001 --gid app
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
-COPY --chown=app:app intelligence/app ./app
+# Whole package (not just a subfolder): service.py, the model/forecast/detect/
+# narrate/policy modules, and artifacts/profile-v1 (the trained model files
+# Assessor loads at startup) all live under intelligence/ as one import root.
+COPY --chown=app:app intelligence ./intelligence
 
 USER app
 EXPOSE 8200
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5   CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8200/health', timeout=2)"]
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
+CMD ["uvicorn", "intelligence.service:app", "--host", "0.0.0.0", "--port", "8200"]

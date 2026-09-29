@@ -2,9 +2,10 @@ import io
 import json
 import logging
 
-from app.main import app
 from fastapi.testclient import TestClient
 from fuelsupply_shared import observability as obs
+
+from intelligence.service import app
 
 
 def test_metrics_has_http_requests_total_and_build_info() -> None:
@@ -17,11 +18,14 @@ def test_metrics_has_http_requests_total_and_build_info() -> None:
     assert 'service="intelligence"' in response.text
 
 
-def test_ready_with_no_checks_returns_200() -> None:
+def test_ready_reports_model_check() -> None:
+    # service.py registers a "model" readiness check (the trained forecaster/
+    # allocator artifacts loaded successfully) — no longer the generic
+    # no-checks-registered case core/other services may still be in.
     client = TestClient(app)
     response = client.get("/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "checks": {}}
+    assert response.json() == {"status": "ready", "checks": {"model": "ok"}}
 
 
 def test_request_id_is_echoed_when_provided() -> None:

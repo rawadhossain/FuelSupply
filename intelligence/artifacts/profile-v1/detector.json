@@ -1,0 +1,19 @@
+{
+  "k": 0.5,
+  "h": 8.0,
+  "adaptive_ewma_alpha": 0.3,
+  "sigma": {
+    "station-coxsbazar|DIESEL": 0.05997415442803506,
+    "station-coxsbazar|OCTANE": 0.05990569839617274,
+    "station-coxsbazar|PETROL": 0.05903325820301263,
+    "station-karnaphuli|DIESEL": 0.07681089118527602,
+    "station-karnaphuli|OCTANE": 0.07245705297477459,
+    "station-karnaphuli|PETROL": 0.07173659349928488,
+    "station-mirpur|DIESEL": 0.05946512946124514,
+    "station-mirpur|OCTANE": 0.05746036706077112,
+    "station-mirpur|PETROL": 0.06189095133482826,
+    "station-tongi|DIESEL": 0.04922542564803687,
+    "station-tongi|OCTANE": 0.04557590978687024,
+    "station-tongi|PETROL": 0.0477576175005227
+  }
+}

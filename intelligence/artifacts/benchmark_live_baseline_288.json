@@ -1,0 +1,54 @@
+[
+  {
+    "policy": "none",
+    "scenario": "baseline",
+    "ticks": 288,
+    "served_demand_liters": 85900.0,
+    "unmet_demand_liters": 193585.957,
+    "service_level": 0.30735,
+    "allocation_liters": 0.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 0,
+    "allocation_responses": {},
+    "invalid_snapshots": 0,
+    "assess_p50_ms": null,
+    "assess_p95_ms": null,
+    "wall_s": 41.7
+  },
+  {
+    "policy": "heuristic",
+    "scenario": "baseline",
+    "ticks": 288,
+    "served_demand_liters": 279485.957,
+    "unmet_demand_liters": 0.0,
+    "service_level": 1.0,
+    "allocation_liters": 229750.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 40,
+    "allocation_responses": {
+      "201": 40
+    },
+    "invalid_snapshots": 0,
+    "assess_p50_ms": 8.8,
+    "assess_p95_ms": 17.5,
+    "wall_s": 52.8
+  },
+  {
+    "policy": "lp",
+    "scenario": "baseline",
+    "ticks": 288,
+    "served_demand_liters": 279485.957,
+    "unmet_demand_liters": 0.0,
+    "service_level": 1.0,
+    "allocation_liters": 279570.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 258,
+    "allocation_responses": {
+      "201": 258
+    },
+    "invalid_snapshots": 0,
+    "assess_p50_ms": 99.2,
+    "assess_p95_ms": 131.1,
+    "wall_s": 84.2
+  }
+]
