@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
 .venv/
@@ -11,3 +13,10 @@ build/
 .ruff_cache/
 *.log
 *.tsbuildinfo
+dataset/run_log.txt
+dataset/crisis_log.txt
+intelligence/artifacts/benchmark_log.txt
+intelligence/artifacts/genai_log.txt
+.git_push_log.txt
+commit_msg.txt
+git_commit_push.bat
