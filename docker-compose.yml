@@ -30,6 +30,12 @@ services:
     depends_on:
       simulator-api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/__chaos', timeout=3)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   postgres:
     image: postgres:16-alpine
@@ -66,7 +72,10 @@ services:
       args:
         GIT_SHA: ${GIT_SHA:-dev}
     environment:
-      SIMULATOR_BASE_URL: ${SIMULATOR_BASE_URL:-http://simulator-api:8000}
+      # Routed through chaos-proxy (not simulator-api directly) so the bad-payload demo
+      # beat (ops/scenario-runner bad-payload) actually exercises core's degraded-mode
+      # handling. chaos-proxy forwards to simulator-api unmodified in passthrough mode.
+      SIMULATOR_BASE_URL: ${CORE_SIMULATOR_BASE_URL:-http://chaos-proxy:8000}
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fuelsupply}:${POSTGRES_PASSWORD:-fuelsupply}@postgres:5432/${POSTGRES_DB:-fuelsupply}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       INTELLIGENCE_BASE_URL: ${INTELLIGENCE_BASE_URL:-http://intelligence:8200}
@@ -76,6 +85,8 @@ services:
     mem_limit: 512m
     depends_on:
       simulator-api:
+        condition: service_healthy
+      chaos-proxy:
         condition: service_healthy
       postgres:
         condition: service_healthy
