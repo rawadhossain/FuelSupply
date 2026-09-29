@@ -1,0 +1,10 @@
+ Container fuelsupply-simulator-api-1 Running 
+tick 100/672 rows=1200
+tick 200/672 rows=2400
+tick 300/672 rows=3600
+tick 400/672 rows=4800
+tick 500/672 rows=6000
+tick 600/672 rows=7200
+tick 672/672 rows=8064
+Done: 8064 rows, 1152 labelled anomalous
+FINISHED 

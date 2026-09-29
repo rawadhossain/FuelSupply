@@ -1,0 +1,136 @@
+Branch: Anindo 
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'SPEC.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docker-compose.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/api-contracts.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/assumptions.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/decisions.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/integration-map.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/ml-architecture.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/requirements.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/research.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/task-board.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/verification.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/assess.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/policy_lp.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/replay.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/requirements.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/signals.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/tests/test_policy.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/heuristic.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/projection.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.dockerignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/Dockerfile', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/artifacts/demo_rehearsal.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/genai_demo.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/narrate.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/payloads.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/rehearse.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/tests/test_narrate.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/tests/test_service.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'intelligence/tests/test_signals.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/locustfile.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/results/summary.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/results/summary.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/run_loadtest.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/sample_assess_request.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'loadtest/sample_assess_response.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'run_genai_demo.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'shared/models.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tools/update_env.py', LF will be replaced by CRLF the next time Git touches it
+A  .dockerignore
+A  .env.example
+M  .gitignore
+M  SPEC.md
+M  docker-compose.yml
+M  docs/api-contracts.md
+M  docs/architecture.md
+M  docs/assumptions.md
+M  docs/decisions.md
+M  docs/integration-map.md
+M  docs/ml-architecture.md
+M  docs/requirements.md
+M  docs/research.md
+M  docs/task-board.md
+M  docs/verification.md
+A  intelligence/Dockerfile
+M  intelligence/README.md
+A  intelligence/artifacts/demo_rehearsal.md
+A  intelligence/artifacts/genai_demo_output.json
+M  intelligence/assess.py
+A  intelligence/genai_demo.py
+A  intelligence/narrate.py
+A  intelligence/payloads.py
+M  intelligence/policy_lp.py
+A  intelligence/rehearse.py
+M  intelligence/replay.py
+M  intelligence/requirements.txt
+A  intelligence/service.py
+M  intelligence/signals.py
+A  intelligence/tests/test_narrate.py
+M  intelligence/tests/test_policy.py
+A  intelligence/tests/test_service.py
+A  intelligence/tests/test_signals.py
+A  loadtest/README.md
+A  loadtest/locustfile.py
+A  loadtest/results/heuristic_10u_stats.csv
+A  loadtest/results/heuristic_1u_stats.csv
+A  loadtest/results/heuristic_50u_stats.csv
+A  loadtest/results/lp_10u_stats.csv
+A  loadtest/results/summary.json
+A  loadtest/results/summary.md
+A  loadtest/run_loadtest.py
+A  loadtest/sample_assess_request.json
+A  loadtest/sample_assess_response.json
+A  run_genai_demo.bat
+A  run_intelligence.bat
+A  run_loadtest.bat
+M  shared/heuristic.py
+A  shared/models.py
+M  shared/projection.py
+A  tools/update_env.py
+[Anindo 30cc583] Add Intelligence Service (FastAPI), contract, load test and demo rehearsal
+ 51 files changed, 4188 insertions(+), 40 deletions(-)
+ create mode 100644 .dockerignore
+ create mode 100644 .env.example
+ create mode 100644 intelligence/Dockerfile
+ create mode 100644 intelligence/artifacts/demo_rehearsal.md
+ create mode 100644 intelligence/artifacts/genai_demo_output.json
+ create mode 100644 intelligence/genai_demo.py
+ create mode 100644 intelligence/narrate.py
+ create mode 100644 intelligence/payloads.py
+ create mode 100644 intelligence/rehearse.py
+ create mode 100644 intelligence/service.py
+ create mode 100644 intelligence/tests/test_narrate.py
+ create mode 100644 intelligence/tests/test_service.py
+ create mode 100644 intelligence/tests/test_signals.py
+ create mode 100644 loadtest/README.md
+ create mode 100644 loadtest/locustfile.py
+ create mode 100644 loadtest/results/heuristic_10u_stats.csv
+ create mode 100644 loadtest/results/heuristic_1u_stats.csv
+ create mode 100644 loadtest/results/heuristic_50u_stats.csv
+ create mode 100644 loadtest/results/lp_10u_stats.csv
+ create mode 100644 loadtest/results/summary.json
+ create mode 100644 loadtest/results/summary.md
+ create mode 100644 loadtest/run_loadtest.py
+ create mode 100644 loadtest/sample_assess_request.json
+ create mode 100644 loadtest/sample_assess_response.json
+ create mode 100644 run_genai_demo.bat
+ create mode 100644 run_intelligence.bat
+ create mode 100644 run_loadtest.bat
+ create mode 100644 shared/models.py
+ create mode 100644 tools/update_env.py
+fatal: unable to connect to cache daemon: Unknown error
+branch 'Anindo' set up to track 'origin/Anindo'.
+To https://github.com/rawadhossain/FuelSupply.git
+   94a2f56..30cc583  Anindo -> Anindo
+PUSH_EXIT=0 
+30cc583 Add Intelligence Service (FastAPI), contract, load test and demo rehearsal
+94a2f56 Add ML intelligence layer: forecaster, detector, allocator, benchmarks
+98287b3 repo setup
+FINISHED 

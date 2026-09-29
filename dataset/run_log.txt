@@ -1,0 +1,488 @@
+=== Tue 09/29/2026 10:14:08.06 === 
+C:\Users\Windows\AppData\Local\Programs\DockerDesktop\resources\bin\docker
+C:\Users\Windows\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe
+ Image asifmahmoud414/bup-fuel-supply-simulator:1.0.0 Pulling 
+ 1bcc58204327 Pulling fs layer 0B
+ 758420c3ee41 Pulling fs layer 0B
+ bd353a918e99 Pulling fs layer 0B
+ f4794c4743a7 Pulling fs layer 0B
+ 3764a9a7d1e8 Pulling fs layer 0B
+ 6b37362b3da7 Pulling fs layer 0B
+ 7e4940c8f867 Pulling fs layer 0B
+ 158dcf8d7014 Pulling fs layer 0B
+ 749cd258f60d Pulling fs layer 0B
+ b0dc7f87bef1 Pulling fs layer 0B
+ 06ad939ed42b Pulling fs layer 0B
+ 758420c3ee41 Downloading 1.049MB
+ bd353a918e99 Download complete 0B
+ 758420c3ee41 Downloading 1.049MB
+ 758420c3ee41 Downloading 2.097MB
+ 758420c3ee41 Downloading 2.097MB
+ 758420c3ee41 Downloading 2.097MB
+ 758420c3ee41 Downloading 2.097MB
+ 758420c3ee41 Downloading 2.097MB
+ 758420c3ee41 Downloading 3.146MB
+ 758420c3ee41 Downloading 3.146MB
+ 758420c3ee41 Downloading 3.146MB
+ 758420c3ee41 Downloading 3.146MB
+ 1bcc58204327 Download complete 0B
+ 758420c3ee41 Downloading 4.194MB
+ 758420c3ee41 Downloading 4.194MB
+ 758420c3ee41 Downloading 4.194MB
+ 758420c3ee41 Downloading 5.243MB
+ 758420c3ee41 Downloading 5.526MB
+ 758420c3ee41 Download complete 0B
+ f4794c4743a7 Download complete 0B
+ 3764a9a7d1e8 Downloading 1.049MB
+ 3764a9a7d1e8 Downloading 1.049MB
+ 3764a9a7d1e8 Download complete 0B
+ 7e4940c8f867 Download complete 0B
+ b0dc7f87bef1 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 3.146MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 3.146MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 3.146MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 4.194MB
+ b0dc7f87bef1 Downloading 4.194MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 4.194MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 4.194MB
+ 6b37362b3da7 Downloading 1.049MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 5.095MB
+ b0dc7f87bef1 Downloading 5.243MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 5.243MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 1.049MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 5.243MB
+ b0dc7f87bef1 Downloading 5.243MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 1.049MB
+ b0dc7f87bef1 Downloading 5.243MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 1.049MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 2.097MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 3.146MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 6.291MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 6b37362b3da7 Downloading 3.146MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 7.34MB
+ b0dc7f87bef1 Downloading 7.34MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 8.389MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 8.389MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 8.389MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 8.389MB
+ b0dc7f87bef1 Downloading 8.389MB
+ 6b37362b3da7 Downloading 3.146MB
+ 158dcf8d7014 Downloading 2.097MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 8.389MB
+ b0dc7f87bef1 Downloading 8.389MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 2.097MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 9.437MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 2.097MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 9.437MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 9.437MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 10.49MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 11.53MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 11.53MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 4.194MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 11.53MB
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Downloading 11.53MB
+ b0dc7f87bef1 Downloading 11.53MB
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ b0dc7f87bef1 Download complete 0B
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ 6b37362b3da7 Downloading 5.243MB
+ 158dcf8d7014 Downloading 3.146MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 749cd258f60d Download complete 0B
+ 6b37362b3da7 Downloading 6.291MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 06ad939ed42b Download complete 0B
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 6.291MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 4.194MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 7.34MB
+ 158dcf8d7014 Downloading 5.243MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 8.389MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 8.389MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 9.437MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 9.437MB
+ 158dcf8d7014 Downloading 6.291MB
+ 6b37362b3da7 Downloading 9.437MB
+ 158dcf8d7014 Downloading 7.34MB
+ 6b37362b3da7 Downloading 9.437MB
+ 158dcf8d7014 Download complete 0B
+ 6b37362b3da7 Downloading 9.437MB
+ 6b37362b3da7 Downloading 9.437MB
+ 6b37362b3da7 Downloading 9.437MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 10.49MB
+ 6b37362b3da7 Downloading 11.53MB
+ 6b37362b3da7 Downloading 11.53MB
+ 6b37362b3da7 Downloading 11.53MB
+ 6b37362b3da7 Downloading 11.53MB
+ 6b37362b3da7 Downloading 11.53MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 12.58MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 13.63MB
+ 6b37362b3da7 Downloading 14.68MB
+ 6b37362b3da7 Downloading 14.68MB
+ 6b37362b3da7 Downloading 14.68MB
+ 6b37362b3da7 Downloading 14.68MB
+ 6b37362b3da7 Downloading 14.68MB
+ 6b37362b3da7 Downloading 15.73MB
+ 6b37362b3da7 Downloading 15.73MB
+ 6b37362b3da7 Downloading 15.73MB
+ 6b37362b3da7 Downloading 15.73MB
+ 6b37362b3da7 Downloading 16.78MB
+ 6b37362b3da7 Downloading 16.78MB
+ 6b37362b3da7 Downloading 16.78MB
+ 6b37362b3da7 Downloading 16.78MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 17.83MB
+ 6b37362b3da7 Downloading 18.87MB
+ 6b37362b3da7 Downloading 18.87MB
+ 6b37362b3da7 Downloading 18.87MB
+ 6b37362b3da7 Downloading 19.92MB
+ 6b37362b3da7 Downloading 19.92MB
+ 6b37362b3da7 Downloading 19.92MB
+ 6b37362b3da7 Downloading 20.97MB
+ 6b37362b3da7 Downloading 20.97MB
+ 6b37362b3da7 Downloading 20.97MB
+ 6b37362b3da7 Downloading 20.97MB
+ 6b37362b3da7 Downloading 20.97MB
+ 6b37362b3da7 Downloading 22.02MB
+ 6b37362b3da7 Downloading 22.02MB
+ 6b37362b3da7 Downloading 22.02MB
+ 6b37362b3da7 Downloading 23.07MB
+ 6b37362b3da7 Downloading 23.07MB
+ 6b37362b3da7 Downloading 23.07MB
+ 6b37362b3da7 Downloading 23.07MB
+ 6b37362b3da7 Downloading 23.07MB
+ 6b37362b3da7 Downloading 24.12MB
+ 6b37362b3da7 Downloading 24.12MB
+ 6b37362b3da7 Downloading 24.12MB
+ 6b37362b3da7 Downloading 25.17MB
+ 6b37362b3da7 Downloading 25.17MB
+ 6b37362b3da7 Downloading 25.17MB
+ 6b37362b3da7 Downloading 26.21MB
+ 6b37362b3da7 Downloading 26.21MB
+ 6b37362b3da7 Downloading 26.21MB
+ 6b37362b3da7 Downloading 26.21MB
+ 6b37362b3da7 Downloading 27.26MB
+ 6b37362b3da7 Downloading 27.26MB
+ 6b37362b3da7 Downloading 28.31MB
+ 6b37362b3da7 Downloading 28.31MB
+ 6b37362b3da7 Downloading 28.31MB
+ 6b37362b3da7 Downloading 29.36MB
+ 6b37362b3da7 Downloading 29.36MB
+ 6b37362b3da7 Download complete 0B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Extracting 1B
+ 6b37362b3da7 Pull complete 0B
+ 3764a9a7d1e8 Extracting 1B
+ 3764a9a7d1e8 Pull complete 0B
+ b0dc7f87bef1 Extracting 1B
+ b0dc7f87bef1 Extracting 1B
+ b0dc7f87bef1 Extracting 1B
+ b0dc7f87bef1 Pull complete 0B
+ 758420c3ee41 Extracting 1B
+ 06ad939ed42b Pull complete 0B
+ 758420c3ee41 Pull complete 0B
+ bd353a918e99 Pull complete 0B
+ 749cd258f60d Pull complete 0B
+ 158dcf8d7014 Extracting 1B
+ 158dcf8d7014 Extracting 1B
+ 7e4940c8f867 Extracting 1B
+ 158dcf8d7014 Pull complete 0B
+ 1bcc58204327 Pull complete 0B
+ f4794c4743a7 Pull complete 0B
+ 7e4940c8f867 Pull complete 0B
+ Image asifmahmoud414/bup-fuel-supply-simulator:1.0.0 Pulled 
+ Network fuelsupply_default Creating 
+ Network fuelsupply_default Creating 
+ Network fuelsupply_default Created 
+ Network fuelsupply_default Created 
+ Container fuelsupply-simulator-api-1 Creating 
+ Container fuelsupply-simulator-api-1 Created 
+ Container fuelsupply-simulator-api-1 Starting 
+ Container fuelsupply-simulator-api-1 Started 
+Waiting for simulator... 
+health: {'status': 'ok', 'database': 'ok', 'simulation': {'status': 'PAUSED', 'tick': 0}}
+tick 100/2000  rows=1200
+tick 200/2000  rows=2400
+tick 300/2000  rows=3600
+tick 400/2000  rows=4800
+tick 500/2000  rows=6000
+tick 600/2000  rows=7200
+tick 700/2000  rows=8400
+tick 800/2000  rows=9600
+tick 900/2000  rows=10800
+tick 1000/2000  rows=12000
+tick 1100/2000  rows=13200
+tick 1200/2000  rows=14400
+tick 1300/2000  rows=15600
+tick 1400/2000  rows=16800
+tick 1500/2000  rows=18000
+tick 1600/2000  rows=19200
+tick 1700/2000  rows=20400
+tick 1800/2000  rows=21600
+tick 1900/2000  rows=22800
+tick 2000/2000  rows=24000
+Done. 24000 demand rows + 9 snapshots in D:\Codes\FuelSupply\dataset\data
+FINISHED 

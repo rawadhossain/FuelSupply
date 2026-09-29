@@ -1,0 +1,13 @@
+Add Intelligence Service (FastAPI), contract, load test and demo rehearsal
+
+- intelligence/service.py: /intel/assess, /intel/ask, /intel/summary, /health, /metrics (SPEC §11 metrics)
+- shared/models.py: Pydantic models of the simulator schema at the service boundary
+- Dockerfile + compose service with healthcheck; .env passed at runtime, never baked
+- CONTRACT-INTEL-OUTPUT in docs/api-contracts.md with real sample request/response
+- Locust load test: heuristic saturates ~57 assess/s, p95 98 ms at 10 users, 0 errors
+- 14-step demo rehearsal through the service; finding: inject demo crises before ~tick 200
+- Also: GenAI layer (OpenAI), partial intelligence items, docs switched to OpenAI
+- 53 tests pass
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_018ZiP4MPK2ji4LuDFGnNTg1
