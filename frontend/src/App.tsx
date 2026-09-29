@@ -480,8 +480,6 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <div className="banner">SIMULATED ENVIRONMENT — all data below comes from the organizer-provided fuel supply simulator, not a real network.</div>
-
         <div className="topbar" id="overview">
           <h1>Fuel Supply Operations</h1>
           <div className="statline">
