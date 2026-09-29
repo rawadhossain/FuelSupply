@@ -276,6 +276,8 @@ export default function App() {
 
   const [eventType, setEventType] = useState<EventType>("demand_spike");
   const [eventStations, setEventStations] = useState<string[]>([]);
+  const [eventRoutes, setEventRoutes] = useState<string[]>([]);
+  const [eventDepots, setEventDepots] = useState<string[]>([]);
   const [eventMultiplier, setEventMultiplier] = useState(2);
   const [eventDuration, setEventDuration] = useState(40);
 
@@ -375,16 +377,34 @@ export default function App() {
     }
   }
 
-  function toggleStation(id: string) {
-    setEventStations((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function toggleFrom(list: string[], setList: (v: string[]) => void, id: string) {
+    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
 
   async function submitEvent() {
+    // route_ids/depot_ids empty does NOT mean "all" despite the integration guide —
+    // verified live: an empty list disrupts nothing. A real target list is required.
+    if (eventType === "route_disruption" && eventRoutes.length === 0) {
+      alert("Pick at least one route to disrupt — an empty selection has no effect (simulator quirk, not a UI bug).");
+      return;
+    }
+    if (eventType === "depot_constraint" && eventDepots.length === 0) {
+      alert("Pick at least one depot to constrain — an empty selection has no effect (simulator quirk, not a UI bug).");
+      return;
+    }
+    if (state?.instance?.status !== "RUNNING") {
+      const ok = confirm(
+        "Simulator is not RUNNING. The event will sit SCHEDULED and won't take effect until you Run or Step past its start tick. Inject anyway?",
+      );
+      if (!ok) return;
+    }
     await runSimAction(() =>
       injectEvent({
         type: eventType,
         duration_ticks: eventDuration,
         station_ids: eventStations,
+        route_ids: eventRoutes,
+        depot_ids: eventDepots,
         multiplier: eventType === "demand_spike" ? eventMultiplier : undefined,
       }),
     );
@@ -617,8 +637,28 @@ export default function App() {
                 <div className="checkbox-group" style={{ marginBottom: 10 }}>
                   {state.stations.map((s) => (
                     <label key={s.id}>
-                      <input type="checkbox" checked={eventStations.includes(s.id)} onChange={() => toggleStation(s.id)} />
+                      <input type="checkbox" checked={eventStations.includes(s.id)} onChange={() => toggleFrom(eventStations, setEventStations, s.id)} />
                       {s.name || s.id}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {eventType === "route_disruption" && state && (
+                <div className="checkbox-group" style={{ marginBottom: 10 }}>
+                  {state.routes.map((r) => (
+                    <label key={r.id}>
+                      <input type="checkbox" checked={eventRoutes.includes(r.id)} onChange={() => toggleFrom(eventRoutes, setEventRoutes, r.id)} />
+                      {r.source_depot_id} → {r.destination_station_id}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {eventType === "depot_constraint" && state && (
+                <div className="checkbox-group" style={{ marginBottom: 10 }}>
+                  {state.depots.map((d) => (
+                    <label key={d.id}>
+                      <input type="checkbox" checked={eventDepots.includes(d.id)} onChange={() => toggleFrom(eventDepots, setEventDepots, d.id)} />
+                      {d.name || d.id}
                     </label>
                   ))}
                 </div>
