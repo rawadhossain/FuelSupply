@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fuelsupply_shared.observability import setup_observability
+from fuelsupply_shared.observability import record_fallback, set_degraded, setup_observability
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app import config
 from app.allocation_executor import AllocationExecutor
+from app.fallback_allocator import compute_fallback_recommendations
 from app.ingestion import IngestionSupervisor
 from app.intelligence_client import (
     IntelligenceClient,
@@ -205,6 +206,7 @@ async def network_state() -> dict:
         "allocations": dump(state.allocations),
         "metrics": dump(state.metrics, many=False),
         "sse_connected": state.sse_connected,
+        "last_poll_error": state.last_poll_error,
         "any_stale": any(
             resource is not None and resource.stale
             for resource in (
@@ -322,22 +324,34 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
             policy=req.policy,
             narrate=req.narrate,
         )
+        set_degraded("core", False)
     except IntelligenceInvalidInputError as exc:
         logger.error("Intelligence rejected our snapshot as invalid: %s", exc)
         raise HTTPException(exc.status_code, {"code": exc.code, "message": exc.message}) from exc
     except IntelligenceUnavailableError as exc:
-        logger.warning("Intelligence unavailable: %s", exc)
-        raise HTTPException(
-            503,
-            {
-                "code": exc.code,
-                "message": exc.message,
-                # No local fallback wired yet — that's TASK-030 (needs
-                # intelligence.heuristic packaged as importable by Core, an
-                # architecture change beyond this bridge's scope).
-                "fallback": "Intelligence service unavailable; no automated recommendation right now",
-            },
-        ) from exc
+        # REQ-009a: ML model unavailable -> fallback allocation policy. Never
+        # auto-executed (every fallback recommendation is HUMAN_REVIEW) — the
+        # operator still approves each one from the dashboard, same as normal.
+        logger.warning("Intelligence unavailable, using fallback allocator: %s", exc)
+        record_fallback(component="recommendation_engine", reason="ml_unavailable")
+        set_degraded("core", True)
+        fallback_recs = compute_fallback_recommendations(state)
+
+        session_factory = app.state.session_factory
+        async with session_factory() as session:
+            await record_event(
+                session,
+                event_type="fallback_activated",
+                details={"reason": "ml_unavailable", "code": exc.code, "recommendation_count": len(fallback_recs)},
+            )
+
+        return {
+            "tick": state.last_polled_tick,
+            "policy": "fallback",
+            "degraded": True,
+            "degraded_reason": f"Intelligence unavailable ({exc.code}): {exc.message}",
+            "recommendations": fallback_recs,
+        }
 
     session_factory = app.state.session_factory
     async with session_factory() as session:

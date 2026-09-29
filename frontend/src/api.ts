@@ -39,6 +39,7 @@ export type NetworkState = {
   allocations: Allocation[];
   metrics: { service_level: number; allocation_liters: number; allocation_failures: number } | null;
   sse_connected: boolean;
+  last_poll_error: string | null;
   any_stale: boolean;
 };
 
@@ -67,6 +68,8 @@ export type Assessment = {
   tick: number;
   policy: string;
   recommendations: Recommendation[];
+  degraded?: boolean;
+  degraded_reason?: string;
   [key: string]: unknown;
 };
 

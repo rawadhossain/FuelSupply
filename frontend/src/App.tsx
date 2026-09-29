@@ -13,6 +13,7 @@ function computeAlerts(state: NetworkState | null): Alert[] {
 
   if (state.any_stale) alerts.push({ level: "warn", text: "Simulator data flagged stale — figures may be out of date." });
   if (!state.sse_connected) alerts.push({ level: "warn", text: "Live updates disconnected — falling back to polling." });
+  if (state.last_poll_error) alerts.push({ level: "bad", text: `Invalid simulator response rejected: ${state.last_poll_error}` });
 
   for (const e of state.events) {
     if (e.status === "ACTIVE" || e.status === "SCHEDULED") {
@@ -59,7 +60,9 @@ const FAULT_TYPES: FaultType[] = ["latency", "unavailable", "error_rate", "stale
 export default function App() {
   const [health, setHealth] = useState<string>("checking...");
   const [state, setState] = useState<NetworkState | null>(null);
-  const [assessment, setAssessment] = useState<{ tick: number; recommendations: Recommendation[] } | null>(null);
+  const [assessment, setAssessment] = useState<
+    { tick: number; recommendations: Recommendation[]; degraded?: boolean; degraded_reason?: string } | null
+  >(null);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
@@ -104,7 +107,7 @@ export default function App() {
     setRecError(null);
     try {
       const a = await getRecommendations("heuristic", false);
-      setAssessment({ tick: a.tick, recommendations: a.recommendations });
+      setAssessment({ tick: a.tick, recommendations: a.recommendations, degraded: a.degraded, degraded_reason: a.degraded_reason });
     } catch (e) {
       setRecError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -113,6 +116,13 @@ export default function App() {
   }
 
   async function approve(rec: Recommendation) {
+    if (rec.review === "HUMAN_REVIEW") {
+      const ok = confirm(
+        `This recommendation is flagged for human review (low confidence or fallback policy). ` +
+          `Submit ${rec.action.quantity.toFixed(0)} L ${rec.fuel_type} to ${rec.station_id} anyway?`,
+      );
+      if (!ok) return;
+    }
     setExecuting(rec.id);
     try {
       await executeRecommendation(rec);
@@ -354,6 +364,11 @@ export default function App() {
           {loadingRecs ? "Asking Intelligence..." : "Get recommendations"}
         </button>
         {recError && <p className="error-text">Error: {recError}</p>}
+        {assessment?.degraded && (
+          <p className="pill pill-warn" style={{ display: "block", marginBottom: 10, padding: "6px 10px" }}>
+            FALLBACK POLICY ACTIVE — {assessment.degraded_reason || "Intelligence service unavailable"}. Recommendations below are from Core's own naive heuristic, not the ML/LP model — review carefully.
+          </p>
+        )}
         {assessment && (
           <p className="rec-meta" style={{ marginBottom: 10 }}>
             Assessed at tick {assessment.tick} — {assessment.recommendations.length} recommendation(s)
