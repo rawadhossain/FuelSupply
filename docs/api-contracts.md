@@ -96,3 +96,24 @@ Define a contract before independent producers and consumers implement it. Schem
 | Version / status | DRAFT |
 
 **Notes / examples:** —
+
+## CONTRACT-INTEL-OUTPUT — Core to Intelligence (proposed contract)
+
+**Status:** Documented proposal based on the implementation in `origin/master` at `21f6d12`. It is not implemented by the currently checked-out `jessan_appli` Intelligence service and still requires review by Core, Intelligence, and frontend owners before TASK-003 can be marked done.
+
+| Field | Value |
+|---|---|
+| Endpoint | `POST /intel/assess`; optional `POST /intel/ask`; `GET /intel/summary` |
+| Owner → consumer | Core sends a simulator snapshot and new demand rows to Intelligence; Core consumes the assessment and exposes it to the operator UI |
+| Authentication | Internal Compose network; no public exposure in the intended deployment |
+| Decision boundary | Intelligence has no simulator client and never submits or cancels an allocation. Core is the only simulator writer. |
+| Request | `snapshot`: endpoint-keyed state for one tick (`instance`, `regions`, `stations`, `depots`, `routes`, `supply-arrivals`, `allocations`, `events`); `demand_rows`: bounded new `/v1/demand-history` entries; `stale`: whether any simulator GET was stale; `policy`: `heuristic` (default) or `lp`; `narrate`: optional, default false |
+| Success | `200` JSON assessment containing tick/model/policy metadata, forecasts, signals, risks, network cover, projected impact, recommendations, alternatives, constraints, confidence/review fields, bottlenecks, and supply outlook |
+| Errors | `422 INVALID_SNAPSHOT` for invalid business state; FastAPI `422` for malformed request; `503 MODEL_UNAVAILABLE` tells Core to use its local shared heuristic; `409 NO_ASSESSMENT` if ask/summary is called before an assessment |
+| Time behavior | Core should call once per new tick with a short timeout, use latest state, and keep `narrate=false` on the hot path. Narration failure must not block assessment. |
+
+Recommendation minimum fields: `station_id`, `fuel_type`, `action` (source depot, route, quantity), `alternatives`, signals/reasons, constraints, before/after impact, confidence, review status and review reasons, policy, and deterministic explanation. Every `HUMAN_REVIEW` recommendation requires operator approval in Core before submission.
+
+Intelligence output must not be used as an instruction to write directly to the simulator. Core revalidates against current simulator state and handles idempotency, simulator conflicts, and post-write reconciliation.
+
+The implementation-derived field catalogue and JSON example live in `docs/api-contracts.md` on `origin/master`; see `docs/intelligence.md` for this branch's code-level notes. Reconcile any schema changes with that ref before implementation.

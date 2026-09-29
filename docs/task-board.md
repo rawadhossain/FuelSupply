@@ -1,6 +1,6 @@
 # Task board
 
-No substantial implementation without a task. Use one ID consistently. Move only owned tasks; record blockers rather than guessing. Owners are roles from SPEC.md §7 until names are assigned: **INT** integration, **INTEL** intelligence, **FE** frontend, **OPS** DevOps.
+Status in this board is scoped to the checked-out `jessan_appli` branch at the Phase 0 foundation commit. Later work is visible in `origin/master` but is not present in this checkout; see [branch-inventory.md](branch-inventory.md). No substantial implementation without a task. Use one ID consistently. Move only owned tasks; record blockers rather than guessing. Owners are roles from SPEC.md §7 until names are assigned: **INT** integration, **INTEL** intelligence, **FE** frontend, **OPS** DevOps.
 
 Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0 is READY; later phases stay in BACKLOG until the contracts they depend on are written into `docs/api-contracts.md`.
 
