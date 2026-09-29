@@ -20,3 +20,6 @@ intelligence/artifacts/genai_log.txt
 .git_push_log.txt
 commit_msg.txt
 git_commit_push.bat
+
+loadtest/results/
+loadtest/results/*.json

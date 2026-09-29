@@ -1,5 +1,5 @@
 import { sleep } from 'k6';
-import { hitTargets, thresholds } from './lib.js';
+import { fetchStateOnce, runIteration, thresholds } from './lib.js';
 
 export const options = {
   vus: 1,
@@ -7,7 +7,11 @@ export const options = {
   thresholds,
 };
 
-export default function () {
-  hitTargets();
+export function setup() {
+  return { state: fetchStateOnce() };
+}
+
+export default function (data) {
+  runIteration(data.state, __ITER);
   sleep(1);
 }
