@@ -127,6 +127,41 @@ async def ingestion_state() -> dict:
     }
 
 
+@app.get("/internal/state")
+async def network_state() -> dict:
+    """Real entity data (not just counts) for the operator dashboard — depots,
+    stations, routes, supply arrivals, events, allocations, all from Core's
+    live NetworkState. Placeholder for CONTRACT-CORE-API (TASK-003).
+    """
+    supervisor: IngestionSupervisor = app.state.supervisor
+    state = supervisor.state
+
+    def dump(resp, many: bool = True):
+        if resp is None:
+            return [] if many else None
+        return [item.model_dump(mode="json") for item in resp.data] if many else resp.data.model_dump(mode="json")
+
+    return {
+        "instance": dump(state.instance, many=False),
+        "regions": dump(state.regions),
+        "depots": dump(state.depots),
+        "stations": dump(state.stations),
+        "routes": dump(state.routes),
+        "supply_arrivals": dump(state.supply_arrivals),
+        "events": dump(state.events),
+        "allocations": dump(state.allocations),
+        "metrics": dump(state.metrics, many=False),
+        "sse_connected": state.sse_connected,
+        "any_stale": any(
+            resource is not None and resource.stale
+            for resource in (
+                state.instance, state.regions, state.depots, state.stations,
+                state.routes, state.supply_arrivals, state.events, state.allocations, state.metrics,
+            )
+        ),
+    }
+
+
 @app.get("/internal/store-state")
 async def store_state() -> dict:
     """Debug/verification view of the Postgres + Redis store (TASK-013) — not
