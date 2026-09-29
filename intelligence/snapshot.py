@@ -88,7 +88,7 @@ class Snapshot:
         return tuple(f for f in FUELS if f in seen) + tuple(sorted(seen - set(FUELS)))
 
     @classmethod
-    def from_api(cls, data: dict, stale: bool = False) -> "Snapshot":
+    def from_api(cls, data: dict, stale: bool = False) -> Snapshot:
         """data: {'instance': {...}, 'stations': [...], 'depots': [...], 'routes': [...],
         'supply-arrivals': [...], 'allocations': [...], 'events': [...], 'regions': [...]}"""
         f = lambda d: {k: float(v) for k, v in d.items()}

@@ -56,7 +56,7 @@ def main() -> int:
     # how well does "profile x multiplier" explain crisis demand?
     spk = d[d.mult != 1.0]
     ratio = (spk.demand_liters / (spk.expected * spk.mult))
-    fit = {"spike_rows": int(len(spk)), "actual_over_expected_x_multiplier_mean": round(float(ratio.mean()), 4),
+    fit = {"spike_rows": len(spk), "actual_over_expected_x_multiplier_mean": round(float(ratio.mean()), 4),
            "mape_pct_with_multiplier": round(float((abs(ratio - 1)).mean() * 100), 2),
            "mape_pct_without_multiplier": round(float((abs(spk.demand_liters / spk.expected - 1)).mean() * 100), 2)}
 

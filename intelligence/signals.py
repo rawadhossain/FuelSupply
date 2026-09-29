@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from shared.snapshot import Snapshot
-
 from .detect import CusumDetector
+from .snapshot import Snapshot
 
 
 @dataclass
@@ -118,7 +117,7 @@ def reconcile_inventory(prev: Snapshot, now: Snapshot, served: dict) -> list[dic
 def allocations_at_risk(snap: Snapshot) -> list[dict]:
     """Transport-failure prediction: a PENDING allocation departs at created_tick + 1; if its route is
     (or will be) DISRUPTED then, the simulator marks it FAILED. Warn while it can still be cancelled."""
-    from shared import schedule
+    from . import schedule
     out = []
     for a in snap.allocations:
         if a.status != "PENDING" or a.route_id not in snap.routes:

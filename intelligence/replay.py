@@ -16,8 +16,8 @@ import time
 import numpy as np
 import pandas as pd
 
-from shared.projection import Move
-from shared.snapshot import Allocation, Snapshot
+from .projection import Move
+from .snapshot import Allocation, Snapshot
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -60,7 +60,7 @@ CRISIS = [
 class ReplaySim:
     def __init__(self, demand: pd.DataFrame, crisis: bool = False):
         self.snap = initial_snapshot()
-        from shared.snapshot import Event
+        from .snapshot import Event
         if crisis:
             self.snap.events = [Event(i + 1, t, st, st + dur, "SCHEDULED", p) for i, (t, st, dur, p) in enumerate(CRISIS)]
         self.dem = {(r.station_id, r.fuel_type, r.tick): r.demand_liters for r in demand.itertuples()}

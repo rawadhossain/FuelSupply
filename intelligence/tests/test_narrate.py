@@ -5,9 +5,9 @@ import os
 import pandas as pd
 import pytest
 
-from shared.projection import Move
 from intelligence.assess import Assessor
-from intelligence.narrate import Narrator, SIM_TAG, build_context, unverified_numbers
+from intelligence.narrate import SIM_TAG, Narrator, build_context, unverified_numbers
+from intelligence.projection import Move
 from intelligence.replay import ROOT, ReplaySim
 
 DEM = os.path.join(ROOT, "dataset", "ml", "demand_full_features.csv")

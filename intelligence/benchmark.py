@@ -16,10 +16,9 @@ import time
 import urllib.error
 import urllib.request
 
-from shared.snapshot import Snapshot
-
 from .assess import Assessor, InvalidInput
 from .replay import CRISIS
+from .snapshot import Snapshot
 
 BASE = os.environ.get("SIM_URL", "http://localhost:8000")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

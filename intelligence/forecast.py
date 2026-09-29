@@ -10,7 +10,6 @@ Only numpy/pandas. See docs/ml-architecture.md §3.
 from __future__ import annotations
 
 import json
-import math
 import os
 from dataclasses import dataclass, field
 
@@ -34,11 +33,11 @@ class ProfileForecaster:
     ewma_decay_ticks: int = 16
 
     # ------------------------------------------------------------------ fitting
-    def fit(self, train: pd.DataFrame) -> "ProfileForecaster":
+    def fit(self, train: pd.DataFrame) -> ProfileForecaster:
         """train: rows with station_id, fuel_type, tick_of_day, demand_liters, demand_factor,
         optional demand_multiplier (defaults 1.0 — baseline scenario has no events)."""
         df = train.copy()
-        mult = df["demand_multiplier"] if "demand_multiplier" in df else 1.0
+        mult = df.get("demand_multiplier", 1.0)
         df["base"] = df["demand_liters"] / (df["demand_factor"] * mult)
         self.region_factor = df.groupby("station_id")["demand_factor"].first().to_dict()
         g = df.groupby(["station_id", "fuel_type", "tick_of_day"])["base"].mean()
@@ -50,7 +49,7 @@ class ProfileForecaster:
             self.profile[(s, f)] = arr
         return self
 
-    def calibrate(self, val: pd.DataFrame) -> "ProfileForecaster":
+    def calibrate(self, val: pd.DataFrame) -> ProfileForecaster:
         """Split-conformal: quantiles of actual/forecast - 1 per series on held-out data."""
         pred = self.point(val["station_id"], val["fuel_type"], val["tick_of_day"])
         rel = val["demand_liters"].to_numpy() / pred - 1.0
@@ -118,7 +117,7 @@ class ProfileForecaster:
                 json.dump(extra_metrics, fh, indent=2)
 
     @classmethod
-    def load(cls, folder: str) -> "ProfileForecaster":
+    def load(cls, folder: str) -> ProfileForecaster:
         with open(os.path.join(folder, "model.json")) as fh:
             cfg = json.load(fh)
         m = cls(version=cfg["version"], region_factor=cfg["region_factor"], ewma_alpha=cfg["ewma_alpha"], adaptive_alpha=cfg.get("adaptive_alpha", 0.3),

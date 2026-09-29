@@ -11,14 +11,12 @@ from collections import defaultdict, deque
 
 import numpy as np
 
-from shared import heuristic, schedule
-from shared.projection import Move, network_cover, project
-from shared.snapshot import Snapshot
-
-from . import policy_lp
+from . import heuristic, policy_lp, schedule
 from .detect import CusumDetector
 from .forecast import ProfileForecaster
+from .projection import Move, network_cover, project
 from .signals import SignalTracker, SupplyHistory, allocations_at_risk, reconcile_inventory
+from .snapshot import Snapshot
 
 DEFAULT_ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), "artifacts", "profile-v1")
 
@@ -99,7 +97,7 @@ class Assessor:
         W = min(self.W, self.H)
         k = np.arange(1, W + 1)
         mean = np.cumsum(demand50[key][:W])
-        from shared.projection import inbound_schedule
+        from .projection import inbound_schedule
         inb = inbound_schedule(snap, W).get(key, np.zeros(W))
         if inbound_extra is not None:
             inb = inb + inbound_extra[:W]

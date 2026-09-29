@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 from .detect import CusumDetector
-from .forecast import ProfileForecaster, TICKS_PER_DAY
+from .forecast import TICKS_PER_DAY, ProfileForecaster
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "dataset", "ml", "demand_full_features.csv")

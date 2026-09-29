@@ -67,8 +67,16 @@ Source for ADR-002 to ADR-006: `/SPEC.md` (team specification, written by a team
 - **Decision:** Ship the heuristic allocator first (rank stations by hours-to-stockout, allocate from the nearest eligible depot within dispatch/route/capacity limits); this satisfies the intelligence requirement alone. The OR-Tools/PuLP allocator is v2 and must be benchmarked against the heuristic to justify itself. RL only if it demonstrably beats both.
 - **Consequences:** The heuristic doubles as the resilience fallback, so it is MVP-critical regardless of what follows.
 
+## ADR-007 — Two simulator-contract model definitions kept separate, not unified
+
+- **Status:** ACCEPTED (as a deliberate deferral, per `abrar/sync` integration 2026-09-29).
+- **Decision:** `shared/fuelsupply_shared/models.py` (Core's models — strict, live-verified field-by-field against the running simulator, used by `core/app/simulator_client`) and `intelligence/models.py` (Intelligence's own `SimSnapshot`/`Instance`/`Station`/etc — looser, `extra="allow"`, feeding its internal `Snapshot` working representation) both parse the same simulator JSON but are separate, independently-maintained Pydantic model sets. They are not merged into one shared definition.
+- **Reason:** Intelligence's 53+ tests (built and passing before this integration) depend on its own model shapes and the internal `Snapshot` conversion (`SimSnapshot.to_snapshot()`) they feed. Rewriting Intelligence to consume `fuelsupply_shared.models` instead would touch `assess.py`, `signals.py`, `policy_lp.py`, and every test fixture that constructs a `Snapshot` — a real refactor with real regression risk, not something to do silently while integrating two branches under time pressure.
+- **Consequences:** A simulator field that changes shape must be updated in two places, not one. If a future session has time for a dedicated refactor, the direction would be: make `intelligence.models.SimSnapshot` parse from `fuelsupply_shared.models` instances (or replace it outright) rather than re-declaring the same fields. Not urgent — the simulator's schema is fixed for the event per the integration guide.
+
 ## Open items (need team input, not blocking Phase 0–1)
 
-1. Fallback heuristic location (ADR-003).
+1. Fallback heuristic location (ADR-003) — resolved in practice: `intelligence/heuristic.py`, callable by Core directly per `intelligence/service.py`'s own 503 fallback hint, without needing the Intelligence container up.
 2. ~~OpenAI model choice and per-request timeout/cost cap (RES-006).~~ Resolved: `OPENAI_MODEL` (default `gpt-5.4-mini`), 8 s timeout, 400 output tokens, 1 retry — all in `.env`.
 3. Is Redis pub/sub actually needed at one Core instance? SPEC.md specifies it; it is kept, but it is first in line for cutting (see `docs/cut-list.md`).
+4. ADR-007's model duplication — revisit if a dedicated refactor window opens; not blocking.

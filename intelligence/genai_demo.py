@@ -16,10 +16,9 @@ import os
 
 import pandas as pd
 
-from shared.projection import Move
-
 from .assess import Assessor
 from .narrate import Narrator
+from .projection import Move
 from .replay import ROOT, ReplaySim
 
 QUESTIONS = ["Why is station-mirpur at risk right now, and what is being done about it?",
@@ -50,13 +49,13 @@ def main() -> int:
                                                       "text": out["recommendations"][0]["explanation_text"],
                                                       "source": out["recommendations"][0]["explanation_source"]},
               "incident": out["incident_summary"], "state": out["state_summary"], "questions": []}
-    print("== DECISION EXPLANATION [%s]\n%s\n" % (report["recommendation"]["source"], report["recommendation"]["text"]))
-    print("== INCIDENT [%s]\n%s\n" % (out["incident_summary"]["source"], out["incident_summary"]["text"]))
-    print("== STATE SUMMARY [%s]\n%s\n" % (out["state_summary"]["source"], out["state_summary"]["text"]))
+    print("== DECISION EXPLANATION [{}]\n{}\n".format(report["recommendation"]["source"], report["recommendation"]["text"]))
+    print("== INCIDENT [{}]\n{}\n".format(out["incident_summary"]["source"], out["incident_summary"]["text"]))
+    print("== STATE SUMMARY [{}]\n{}\n".format(out["state_summary"]["source"], out["state_summary"]["text"]))
     for q in QUESTIONS:
         a = n.investigate(q, out)
         report["questions"].append({"q": q, **a})
-        print("== Q: %s [%s]\n%s\n" % (q, a["source"], a["text"]))
+        print("== Q: {} [{}]\n{}\n".format(q, a["source"], a["text"]))
     report["stats"] = n.metrics()
     for part in [report["recommendation"], out["incident_summary"], out["state_summary"], *report["questions"]]:
         if part.get("reason"):

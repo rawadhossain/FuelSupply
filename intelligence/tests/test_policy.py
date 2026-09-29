@@ -1,19 +1,15 @@
 """Tests for projection, policies and the assessment pipeline.
 Run from repo root:  python -m pytest intelligence/tests -q"""
-import copy
 import os
 
-import numpy as np
 import pandas as pd
 import pytest
 
-from shared import heuristic, schedule
-from shared.projection import Move, project
-from shared.snapshot import Event
-
-from intelligence import policy_lp
+from intelligence import heuristic, policy_lp, schedule
 from intelligence.assess import Assessor, InvalidInput
+from intelligence.projection import project
 from intelligence.replay import ROOT, ReplaySim, initial_snapshot
+from intelligence.snapshot import Event
 
 DEM = os.path.join(ROOT, "dataset", "ml", "demand_full_features.csv")
 pytestmark = pytest.mark.skipif(not os.path.exists(DEM), reason="needs dataset/ml CSVs")

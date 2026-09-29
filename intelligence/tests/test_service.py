@@ -94,7 +94,7 @@ def test_model_unavailable_is_503_with_fallback_hint(client, body):
     service.S.assessor = None
     try:
         r = client.post("/intel/assess", json=body)
-        assert r.status_code == 503 and "shared.heuristic" in r.json()["detail"]["fallback"]
+        assert r.status_code == 503 and "intelligence.heuristic" in r.json()["detail"]["fallback"]
         assert client.get("/health").status_code == 503
     finally:
         service.S.assessor = saved

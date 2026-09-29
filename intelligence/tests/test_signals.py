@@ -7,14 +7,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from shared import heuristic
-from shared.projection import Move
-from shared.snapshot import Allocation, Event
-
-from intelligence import policy_lp
+from intelligence import heuristic, policy_lp
 from intelligence.assess import Assessor
+from intelligence.projection import Move
 from intelligence.replay import ROOT, ReplaySim, initial_snapshot
 from intelligence.signals import SupplyHistory, allocations_at_risk, reconcile_inventory
+from intelligence.snapshot import Allocation, Event
 
 DEM = os.path.join(ROOT, "dataset", "ml", "demand_full_features.csv")
 pytestmark = pytest.mark.skipif(not os.path.exists(DEM), reason="needs dataset/ml CSVs")

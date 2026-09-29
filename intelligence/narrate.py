@@ -44,7 +44,9 @@ class LLMUnavailable(RuntimeError):
 
 class OpenAIClient:
     def __init__(self, api_key: str, model: str, timeout: float, max_tokens: int):
-        from openai import OpenAI  # imported lazily: the rest of the system works without the package
+        from openai import (
+            OpenAI,  # imported lazily: the rest of the system works without the package
+        )
         self.client = OpenAI(api_key=api_key, timeout=timeout, max_retries=1)
         self.model, self.max_tokens = model, max_tokens
 
@@ -180,7 +182,7 @@ class Narrator:
     cache: dict = field(default_factory=dict)
 
     @classmethod
-    def from_env(cls) -> "Narrator":
+    def from_env(cls) -> Narrator:
         c, why = client_from_env()
         return cls(client=c, disabled_reason=why)
 

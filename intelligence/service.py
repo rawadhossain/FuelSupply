@@ -1,13 +1,14 @@
 """Intelligence Service (SPEC §5): FastAPI wrapper around Assessor + Narrator.
 
-    uvicorn intelligence.service:app --host 0.0.0.0 --port 8100
+    uvicorn intelligence.service:app --host 0.0.0.0 --port 8200
 
 Endpoints (contract: docs/api-contracts.md, CONTRACT-INTEL-OUTPUT):
   POST /intel/assess   snapshot (+ new demand rows) -> forecasts, signals, risks, recommendations ...
   POST /intel/ask      operator question about the latest assessment (investigation assistant)
   GET  /intel/summary  incident explanation + state summary of the latest assessment
-  GET  /health         liveness + component status (model, LLM, last tick)
-  GET  /metrics        Prometheus metrics incl. SPEC §11 intelligence metrics
+  GET  /health         liveness + component status (model, LLM, last tick), owned by this file
+  GET  /metrics        Prometheus metrics (generic HTTP/build + SPEC §11 intel_* metrics)
+  GET  /ready          readiness (model loaded), both wired by fuelsupply_shared.observability
 The service never calls the simulator; Core sends it the snapshot (SPEC §5).
 """
 from __future__ import annotations
@@ -19,12 +20,12 @@ from typing import Literal, Optional
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Response
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
+from fuelsupply_shared.observability import setup_observability
+from prometheus_client import Counter, Gauge, Histogram
 from pydantic import BaseModel, Field
 
-from shared.models import DemandRow, SimSnapshot
-
 from .assess import Assessor, InvalidInput
+from .models import DemandRow, SimSnapshot
 from .narrate import Narrator
 
 POLICY = os.environ.get("INTEL_POLICY", "heuristic")
@@ -47,6 +48,18 @@ PROJ_UNMET = Gauge("intel_projected_unmet_liters", "Projected unmet demand next 
 
 app = FastAPI(title="BUP Fuel Intelligence Service", version="1.0.0",
               description="Forecast, detection, allocation and explanations over a SIMULATED fuel network.")
+
+
+async def _check_model_loaded() -> bool:
+    return S.assessor is not None
+
+
+setup_observability(
+    app,
+    service="intelligence",
+    version="1.0.0",
+    readiness_checks={"model": _check_model_loaded},
+)
 
 
 class _State:
@@ -106,7 +119,7 @@ def assess(req: AssessRequest) -> dict:
     if S.assessor is None:
         ASSESS_REQ.labels(req.policy, "unavailable").inc()
         raise HTTPException(503, {"code": "MODEL_UNAVAILABLE", "message": S.load_error or "model not loaded",
-                                  "fallback": "Core should run shared.heuristic.plan"})
+                                  "fallback": "Core should run intelligence.heuristic.plan"})
     t0 = time.perf_counter()
     with S.lock:                                  # Assessor keeps per-run memory (detector, history)
         try:
@@ -165,7 +178,7 @@ def health(response: Response) -> dict:
     llm = S.narrator.metrics() if S.narrator else {"enabled": False, "disabled_reason": "not loaded"}
     body = {"status": "healthy" if ok else "degraded",
             "components": {"prediction_model": "healthy" if ok else f"down: {S.load_error or 'model unavailable'}",
-                           "decision_engine": "healthy" if ok else "down (Core must use shared.heuristic)",
+                           "decision_engine": "healthy" if ok else "down (Core must use intelligence.heuristic)",
                            "llm_narration": "healthy" if llm.get("enabled") else f"template-only ({llm.get('disabled_reason')})"},
             "model_version": S.assessor.model.version if ok else None,
             "default_policy": POLICY, "last_tick": S.last["tick"] if S.last else None,
@@ -175,6 +188,7 @@ def health(response: Response) -> dict:
     return body
 
 
-@app.get("/metrics")
-def metrics() -> Response:
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+# /metrics and /ready are registered by setup_observability() above — this
+# process's global prometheus_client REGISTRY includes both those generic
+# HTTP/build metrics and every intel_* metric defined in this file, so one
+# /metrics endpoint serves both without duplication.

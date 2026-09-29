@@ -14,11 +14,9 @@ import os
 import pandas as pd
 from fastapi.testclient import TestClient
 
-from shared import heuristic
-from shared.projection import Move
-
-from . import service
+from . import heuristic, service
 from .payloads import sim_json
+from .projection import Move
 from .replay import ROOT, ReplaySim
 
 OUT = os.path.join(ROOT, "intelligence", "artifacts", "demo_rehearsal.md")
@@ -85,7 +83,7 @@ def main() -> int:
     advance(150)
     # Organiser-style combined crisis while fuel still exists (all supply lands by ~tick 212, so a demo
     # crisis must come before ~tick 200): Gazipur->Mirpur road closed + Mirpur demand x1.6, ticks 151-200.
-    from shared.snapshot import Event
+    from .snapshot import Event
     n = len(sim.snap.events)
     sim.snap.events += [Event(n + 1, "route_disruption", 151, 200, "SCHEDULED", {"route_ids": ["route-gazipur-mirpur"]}),
                         Event(n + 2, "demand_spike", 151, 200, "SCHEDULED", {"station_ids": ["station-mirpur"], "multiplier": 1.6})]
@@ -130,7 +128,7 @@ def main() -> int:
          for f in snap.stations[s].capacity}
     import time as _t
     t0 = _t.perf_counter(); moves = heuristic.plan(snap, d, 96); ms = (_t.perf_counter() - t0) * 1000
-    say(13, "Fallback activates", f"Core runs shared.heuristic.plan without the service ({ms:.0f} ms, no model files): " +
+    say(13, "Fallback activates", f"Core runs intelligence.heuristic.plan without the service ({ms:.0f} ms, no model files): " +
         (f"{len(moves)} truck(s), all marked fallback + HUMAN_REVIEW: " + "; ".join(
             f"{m.quantity:,.0f} L {m.fuel_type} via {m.route_id}" for m in moves[:3]) if moves else
          "no truck is urgent this tick, so none planned; operations stay covered by trucks already on the way"))

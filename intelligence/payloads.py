@@ -11,8 +11,7 @@ import os
 
 import pandas as pd
 
-from shared.projection import Move
-
+from .projection import Move
 from .replay import ROOT, ReplaySim
 
 

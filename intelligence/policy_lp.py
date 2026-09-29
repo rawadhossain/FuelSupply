@@ -14,10 +14,10 @@ import numpy as np
 from scipy.optimize import linprog
 from scipy.sparse import coo_matrix
 
-from shared import schedule
-from shared.heuristic import MIN_QTY, dispatch_used
-from shared.projection import Move, inbound_schedule, supply_schedule
-from shared.snapshot import Snapshot
+from . import schedule
+from .heuristic import MIN_QTY, dispatch_used
+from .projection import Move, inbound_schedule, supply_schedule
+from .snapshot import Snapshot
 
 
 @dataclass
