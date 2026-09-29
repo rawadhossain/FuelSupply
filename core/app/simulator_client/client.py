@@ -111,7 +111,15 @@ class SimulatorClient:
             raise _parse_error(response)
 
         stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
-        return SimulatorResponse(data=response.json(), stale=stale)
+        try:
+            body = response.json()
+        except ValueError as exc:
+            # 2xx but not even valid JSON (e.g. chaos-proxy corrupt_json mode) —
+            # same REQ-009b path as a schema mismatch, not an unhandled 500.
+            raise SimulatorInvalidResponseError(
+                endpoint=path, raw_body=response.text[:500], validation_error=exc
+            ) from exc
+        return SimulatorResponse(data=body, stale=stale)
 
     async def _get_model(
         self, path: str, model: type[BaseModel], params: dict[str, object] | None = None
@@ -149,7 +157,13 @@ class SimulatorClient:
             raise _parse_error(response)
 
         stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
-        return SimulatorResponse(data=response.json(), stale=stale)
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise SimulatorInvalidResponseError(
+                endpoint=path, raw_body=response.text[:500], validation_error=exc
+            ) from exc
+        return SimulatorResponse(data=body, stale=stale)
 
     async def _post_model(
         self, path: str, model: type[BaseModel], json_body: dict[str, object]
