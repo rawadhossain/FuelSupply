@@ -1,0 +1,69 @@
+groups:
+  - name: fuel-demo-recording
+    interval: 5s
+    rules:
+      # Cumulative-since-start service level (dashboards should prefer the 5m rate below).
+      - record: fuel:service_level
+        expr: avg(sim_service_level)
+
+      # Rolling 5-minute service level, held over brief gaps/pauses via last_over_time.
+      - record: fuel:service_level_5m
+        expr: |
+          last_over_time(
+            (
+              increase(sim_served_demand_liters[5m])
+                /
+              clamp_min(increase(sim_served_demand_liters[5m]) + increase(sim_unmet_demand_liters[5m]), 1e-9)
+            )[15m:1m]
+          )
+
+      - record: fuel:unmet_liters_10m
+        expr: increase(sim_unmet_demand_liters[10m])
+
+      - record: fuel:stations_at_risk
+        expr: count(sim_station_stock_ratio < 0.25) or vector(0)
+
+      - record: fuel:system_state
+        expr: |
+          clamp_max(
+            2 * clamp_max((count(ALERTS{alertstate="firing",severity="critical"}) or vector(0)), 1)
+            +
+            clamp_max(
+              (count(ALERTS{alertstate="firing",severity="warning"}) or vector(0))
+              +
+              (max(degraded_mode) or vector(0)),
+              1
+            ),
+            2
+          )
+
+      - record: fuel:http_p95_seconds
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+
+      - record: fuel:http_error_ratio
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+          sum(rate(http_requests_total[5m]))
+
+      - record: fuel:decisions_per_min
+        expr: sum(rate(decisions_total[1m])) * 60
+
+      - record: fuel:fallbacks_5m
+        expr: sum(increase(fallback_activations_total[5m])) or vector(0)
+
+      # Baseline (trend) estimate, in simulated hours, of when a station runs dry.
+      # depletion_per_tick = -deriv(ratio)/deriv(tick); hours = ratio/depletion_per_tick * tick_minutes/60.
+      # Only emitted where the ratio is actually falling and the simulator is ticking
+      # (guards divide-by-zero/paused instead of surfacing NaN/Inf).
+      - record: fuel:station_hours_to_stockout
+        expr: |
+          (
+            sim_station_stock_ratio
+              * scalar(deriv(sim_tick[2m]))
+              * scalar(sim_tick_minutes)
+              / 60
+              / clamp_min(-deriv(sim_station_stock_ratio[2m]), 1e-9)
+          )
+          and (deriv(sim_station_stock_ratio[2m]) < 0)
+          and on() (vector(scalar(deriv(sim_tick[2m]))) > 0)
