@@ -166,11 +166,11 @@ class SupplyArrival(BaseModel):
 
 
 class DomainEvent(BaseModel):
-    id: str
+    id: int
     type: EventType
     status: EventStatus
     start_tick: int
-    duration_ticks: int
+    end_tick: int
     parameters: dict = Field(default_factory=dict)
 
 
