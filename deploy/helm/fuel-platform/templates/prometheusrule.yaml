@@ -1,0 +1,17 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+{{- range $path, $_ := .Files.Glob "files/rules/*.yml" }}
+{{- $content := $.Files.Get $path | fromYaml }}
+{{- range $content.groups }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .name }}
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - {{ toYaml . | nindent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

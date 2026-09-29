@@ -1,0 +1,15 @@
+{{- range $name, $svc := .Values.services }}
+{{- $svcName := $name | lower }}
+{{- if and (ne $svcName "coreworker") $svc.pdb $svc.pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $svcName }}
+spec:
+  minAvailable: {{ $svc.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      app: {{ $svcName }}
+{{- end }}
+{{- end }}

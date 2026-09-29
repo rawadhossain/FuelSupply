@@ -1,0 +1,19 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+{{- range $svcName, $appLabel := (dict "core" "core" "intelligence" "intelligence" "sim-exporter" "simexporter") }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $svcName }}
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: {{ $appLabel }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ $.Values.monitoring.serviceMonitor.interval }}
+{{- end }}
+{{- end }}

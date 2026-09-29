@@ -1,0 +1,81 @@
+name: Deploy to EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Image tag to build and deploy
+        required: false
+        default: latest
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  CLUSTER_NAME: fuel-platform
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.EKS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push images
+        run: |
+          TAG="${{ github.event.inputs.image_tag || 'latest' }}"
+          REPO="${REGISTRY}/${{ github.repository }}"
+          docker build -t "${REPO}/core:${TAG}" -f core/Dockerfile .
+          docker build -t "${REPO}/intelligence:${TAG}" -f intelligence/Dockerfile .
+          docker build -t "${REPO}/frontend:${TAG}" -f frontend/Dockerfile ./frontend
+          docker build -t "${REPO}/sim-exporter:${TAG}" -f ops/sim-exporter/Dockerfile ./ops/sim-exporter
+          docker push "${REPO}/core:${TAG}"
+          docker push "${REPO}/intelligence:${TAG}"
+          docker push "${REPO}/frontend:${TAG}"
+          docker push "${REPO}/sim-exporter:${TAG}"
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name "${CLUSTER_NAME}" --region "${AWS_REGION}"
+
+      - name: Helm upgrade
+        run: |
+          TAG="${{ github.event.inputs.image_tag || 'latest' }}"
+          REPO="${REGISTRY}/${{ github.repository }}"
+          helm upgrade --install fuel-platform deploy/helm/fuel-platform \
+            -f deploy/helm/fuel-platform/values-eks.yaml \
+            --set services.core.image.repository="${REPO}/core" \
+            --set services.core.image.tag="${TAG}" \
+            --set services.intelligence.image.repository="${REPO}/intelligence" \
+            --set services.intelligence.image.tag="${TAG}" \
+            --set services.frontend.image.repository="${REPO}/frontend" \
+            --set services.frontend.image.tag="${TAG}" \
+            --set services.simExporter.image.repository="${REPO}/sim-exporter" \
+            --set services.simExporter.image.tag="${TAG}" \
+            --atomic --wait --timeout 5m
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/core --timeout=120s
+          kubectl rollout status deployment/intelligence --timeout=120s
+          kubectl rollout status deployment/frontend --timeout=120s
+
+      - name: Smoke curl
+        run: |
+          kubectl port-forward svc/frontend 18080:8080 &
+          sleep 3
+          curl -sf http://localhost:18080/nginx-health

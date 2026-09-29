@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  GIT_SHA: {{ .Values.global.gitSha | quote }}
+  LOG_LEVEL: {{ .Values.global.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.global.logFormat | quote }}

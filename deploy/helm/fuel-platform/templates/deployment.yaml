@@ -1,0 +1,114 @@
+{{- $root := . -}}
+{{- range $name, $svc := .Values.services }}
+{{- $svcName := $name | lower }}
+{{- if ne $svcName "coreworker" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $svcName }}
+  labels:
+    app: {{ $svcName }}
+    {{- include "fuel-platform.labels" $root | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $svcName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $svcName }}
+      annotations:
+        checksum/config: {{ $root.Values | toYaml | sha256sum }}
+    spec:
+      containers:
+        - name: {{ $svcName }}
+          image: "{{ $svc.image.repository }}:{{ $svc.image.tag }}"
+          imagePullPolicy: {{ $svc.image.pullPolicy }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          env:
+            - name: GIT_SHA
+              value: {{ $root.Values.global.gitSha | quote }}
+            {{- if eq $svcName "core" }}
+            - name: DATABASE_URL
+              value: "postgresql+psycopg://{{ $root.Values.postgres.user }}:$(POSTGRES_PASSWORD)@postgres:{{ $root.Values.postgres.port }}/{{ $root.Values.postgres.db }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fuel-platform.secretName" $root }}
+                  key: postgres-password
+            {{- end }}
+            {{- if eq $svcName "intelligence" }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fuel-platform.secretName" $root }}
+                  key: openai-api-key
+            {{- end }}
+            {{- range $k, $v := $svc.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- if $svc.probes }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.probes.liveness.path }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.probes.readiness.path }}
+              port: {{ $svc.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+{{- end }}
+{{- end }}
+---
+# core-worker: same image as core, disabled by default. Enable once the
+# backend implements CORE_ROLE=api|worker so autoscaling `core` doesn't
+# duplicate the ingestion poller across replicas.
+{{- if .Values.services.coreWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-worker
+  labels:
+    app: core-worker
+    {{- include "fuel-platform.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.coreWorker.replicas }}
+  selector:
+    matchLabels:
+      app: core-worker
+  template:
+    metadata:
+      labels:
+        app: core-worker
+    spec:
+      containers:
+        - name: core-worker
+          image: "{{ .Values.services.coreWorker.image.repository }}:{{ .Values.services.coreWorker.image.tag }}"
+          imagePullPolicy: {{ .Values.services.coreWorker.image.pullPolicy }}
+          env:
+            - name: GIT_SHA
+              value: {{ .Values.global.gitSha | quote }}
+            - name: DATABASE_URL
+              value: "postgresql+psycopg://{{ .Values.postgres.user }}:$(POSTGRES_PASSWORD)@postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.db }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "fuel-platform.secretName" . }}
+                  key: postgres-password
+            {{- range $k, $v := .Values.services.coreWorker.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.services.coreWorker.resources | nindent 12 }}
+{{- end }}
