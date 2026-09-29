@@ -8,3 +8,8 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql+psycopg://fuelsupply:fuelsupply@localhost:5432/fuelsupply"
 )
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+INTELLIGENCE_BASE_URL = os.environ.get("INTELLIGENCE_BASE_URL", "http://localhost:8200")
+# How far back to pull /v1/demand-history for each assess() call. Bounded per
+# RISK-006 (the table grows unboundedly); this is a snapshot-time convenience
+# read, not the poller's own cycle (TASK-011 deliberately doesn't fetch it).
+DEMAND_HISTORY_LIMIT = int(os.environ.get("DEMAND_HISTORY_LIMIT", "300"))

@@ -3,14 +3,22 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fuelsupply_shared.observability import setup_observability
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app import config
 from app.allocation_executor import AllocationExecutor
 from app.ingestion import IngestionSupervisor
-from app.simulator_client import SimulatorClient
+from app.intelligence_client import (
+    IntelligenceClient,
+    IntelligenceInvalidInputError,
+    IntelligenceUnavailableError,
+    build_sim_snapshot,
+)
+from app.intelligence_client.snapshot import SnapshotNotReadyError
+from app.simulator_client import SimulatorClient, SimulatorError
 from app.store import (
     RedisStateCache,
     init_models,
@@ -19,6 +27,7 @@ from app.store import (
     make_poll_success_hook,
     make_session_factory,
 )
+from app.store.audit_log import record_event
 from app.store.models import AllocationRecord, AuditLogEntry
 
 logger = logging.getLogger(__name__)
@@ -43,9 +52,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     allocation_executor = AllocationExecutor(
         client, on_write=make_allocation_write_hook(session_factory)
     )
+    intelligence_client = IntelligenceClient(base_url=config.INTELLIGENCE_BASE_URL)
 
     app.state.supervisor = supervisor
     app.state.allocation_executor = allocation_executor
+    app.state.intelligence_client = intelligence_client
+    app.state.simulator_client = client
     app.state.session_factory = session_factory
     app.state.redis_cache = redis_cache
 
@@ -58,6 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if run_task is not None:
             run_task.cancel()
         await client.aclose()
+        await intelligence_client.aclose()
         await redis_cache.aclose()
         await engine.dispose()
 
@@ -135,3 +148,151 @@ async def store_state() -> dict:
         "postgres": {"allocations": allocation_count, "audit_log": audit_count},
         "redis_snapshot": await redis_cache.read_snapshot(),
     }
+
+
+class RecommendationsRequest(BaseModel):
+    policy: str = Field(default="heuristic", description="'heuristic' or 'lp'")
+    narrate: bool = Field(
+        default=False, description="Ask Intelligence for LLM explanations (slower; needs OPENAI_API_KEY)"
+    )
+
+
+class ExecuteAllocationAction(BaseModel):
+    source_depot_id: str
+    route_id: str
+    quantity: float = Field(gt=0)
+
+
+class ExecuteRecommendationRequest(BaseModel):
+    """Shape matches one entry of `/internal/recommendations`'s own
+    `recommendations` list — a caller reads a recommendation, picks one, and
+    reposts its `station_id`/`fuel_type`/`action` back here unchanged."""
+
+    station_id: str
+    fuel_type: str
+    action: ExecuteAllocationAction
+    intent: str = "intelligence-recommendation"
+
+
+@app.post("/internal/recommendations")
+async def get_recommendations(req: RecommendationsRequest | None = None) -> dict:
+    """The Core<->Intelligence bridge: builds a SimSnapshot from Core's own live
+    `NetworkState` (never straight from the simulator — REST-is-truth still
+    flows through Core's poller first), pulls a bounded recent demand-history
+    window, and asks Intelligence to assess it. Not the public dashboard
+    contract yet (TASK-003/020 should be written from this real shape).
+    """
+    req = req or RecommendationsRequest()
+    supervisor: IngestionSupervisor = app.state.supervisor
+    state = supervisor.state
+    try:
+        snapshot = build_sim_snapshot(state)
+    except SnapshotNotReadyError as exc:
+        raise HTTPException(503, {"code": "INGESTION_NOT_READY", "message": str(exc)}) from exc
+
+    any_stale = any(
+        resource is not None and resource.stale
+        for resource in (
+            state.instance,
+            state.regions,
+            state.depots,
+            state.stations,
+            state.routes,
+            state.supply_arrivals,
+            state.events,
+            state.allocations,
+            state.metrics,
+        )
+    )
+
+    simulator_client: SimulatorClient = app.state.simulator_client
+    try:
+        demand_result = await simulator_client.get_demand_history(limit=config.DEMAND_HISTORY_LIMIT)
+    except SimulatorError as exc:
+        logger.warning("demand-history fetch failed, assessing without it: %s", exc)
+        demand_rows: list[dict] = []
+    else:
+        any_stale = any_stale or demand_result.stale
+        demand_rows = [
+            {
+                "station_id": r.station_id,
+                "fuel_type": r.fuel_type.value,
+                "tick": r.tick,
+                "demand_liters": r.demand_liters,
+                "served_liters": r.served_liters,
+                "unmet_liters": r.unmet_liters,
+            }
+            for r in demand_result.data
+        ]
+
+    intelligence_client: IntelligenceClient = app.state.intelligence_client
+    try:
+        assessment = await intelligence_client.assess(
+            snapshot=snapshot,
+            demand_rows=demand_rows,
+            stale=any_stale,
+            policy=req.policy,
+            narrate=req.narrate,
+        )
+    except IntelligenceInvalidInputError as exc:
+        logger.error("Intelligence rejected our snapshot as invalid: %s", exc)
+        raise HTTPException(exc.status_code, {"code": exc.code, "message": exc.message}) from exc
+    except IntelligenceUnavailableError as exc:
+        logger.warning("Intelligence unavailable: %s", exc)
+        raise HTTPException(
+            503,
+            {
+                "code": exc.code,
+                "message": exc.message,
+                # No local fallback wired yet — that's TASK-030 (needs
+                # intelligence.heuristic packaged as importable by Core, an
+                # architecture change beyond this bridge's scope).
+                "fallback": "Intelligence service unavailable; no automated recommendation right now",
+            },
+        ) from exc
+
+    session_factory = app.state.session_factory
+    async with session_factory() as session:
+        await record_event(
+            session,
+            event_type="intelligence_assessment",
+            details={
+                "tick": assessment.get("tick"),
+                "policy": assessment.get("policy"),
+                "recommendation_count": len(assessment.get("recommendations", [])),
+                "narrate": req.narrate,
+            },
+        )
+
+    return assessment
+
+
+@app.post("/internal/allocations/execute")
+async def execute_recommendation(req: ExecuteRecommendationRequest) -> dict:
+    """Executes one recommendation returned by `/internal/recommendations` —
+    the human-review step (REQ-009c/REQ-019): nothing is auto-submitted, a
+    caller must already have inspected the recommendation and chosen this one.
+    """
+    supervisor: IngestionSupervisor = app.state.supervisor
+    tick = supervisor.state.last_polled_tick
+    if tick is None:
+        raise HTTPException(503, {"code": "INGESTION_NOT_READY", "message": "no known tick yet"})
+
+    allocation_executor: AllocationExecutor = app.state.allocation_executor
+    try:
+        allocation = await allocation_executor.submit(
+            source_depot_id=req.action.source_depot_id,
+            destination_station_id=req.station_id,
+            route_id=req.action.route_id,
+            fuel_type=req.fuel_type,
+            quantity=req.action.quantity,
+            tick=tick,
+            intent=req.intent,
+        )
+    except SimulatorError as exc:
+        logger.warning("allocation execution failed: %s", exc)
+        code = getattr(exc, "code", "SIMULATOR_ERROR")
+        status = getattr(exc, "status_code", None) or 502
+        raise HTTPException(status, {"code": code, "message": str(exc)}) from exc
+
+    return allocation.model_dump(mode="json")
