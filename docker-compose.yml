@@ -16,6 +16,21 @@ services:
       retries: 10
       start_period: 10s
 
+  chaos-proxy:
+    build:
+      context: ./ops/chaos-proxy
+      dockerfile: Dockerfile
+    environment:
+      UPSTREAM: ${CHAOS_PROXY_UPSTREAM:-http://simulator-api:8000}
+    ports:
+      - "127.0.0.1:${CHAOS_PROXY_PORT:-8090}:8000"
+      - "127.0.0.1:${CHAOS_PROXY_CONTROL_PORT:-8001}:8001"
+    restart: unless-stopped
+    mem_limit: 64m
+    depends_on:
+      simulator-api:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     environment:
