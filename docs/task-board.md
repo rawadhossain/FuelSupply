@@ -32,9 +32,7 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 
 | ID | Req | Description | Owner | Depends on | Files / components | Acceptance criteria |
 |---|---|---|---|---|---|---|
-| TASK-002 | REQ-002 | Phase 0: run simulator locally, explore `/admin`; write shared Pydantic models matching simulator schemas exactly; write CONTRACT-SIM-REST and CONTRACT-SIM-ALLOC into `docs/api-contracts.md` | INT | — | shared/models, docs/api-contracts.md | Models parse real responses for every endpoint; contracts recorded |
 | TASK-003 | REQ-001, 008 | Write CONTRACT-CORE-API (REST + WebSocket payloads for dashboard) and CONTRACT-INTEL-OUTPUT (forecast, risk, recommendation) so FE and INTEL can work in parallel | INT + INTEL + FE | TASK-002 | docs/api-contracts.md | Contracts reviewed by all three owners; FE mock matches them |
-| TASK-004 | REQ-012, 020 | Phase 0: repo scaffold, `docker-compose.yml` with simulator, core, intelligence, frontend, Postgres, Redis, Prometheus, Grafana; healthchecks and depends_on; `.env.example`; CI skeleton (lint + test) | OPS | — | docker-compose.yml, .github/workflows | `docker compose up` on a clean checkout gets all containers healthy; services tolerate `SIMULATOR_START_MODE=paused` |
 
 ## IN PROGRESS
 | ID | Req | Description | Owner | Depends on | Files / components | Acceptance criteria |
@@ -55,3 +53,5 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 |---|---|---|---|---|---|
 | TASK-000 | — | Re-planned project docs around the real challenge and folded in SPEC.md decisions (stack, two-service split, idempotency, LLM scope) | Claude planning session | `docs/*.md`, 2026-09-29 | No code yet; no contracts written yet (TASK-002/003) |
 | TASK-001 | ADR-002 | Stack decision | Team | SPEC.md §5–6, ADR-002 ACCEPTED | Open items listed at bottom of `docs/decisions.md` |
+| TASK-002 | REQ-002 | Ran simulator standalone, explored `/admin`, wrote `shared/fuelsupply_shared/models.py` and CONTRACT-SIM-REST/CONTRACT-SIM-ALLOC in `docs/api-contracts.md` | INT (Claude, Phase 0 session) | VER-002, VER-003, VER-004 in `docs/verification.md`; ASM-010 resolved | None blocking — models cover every documented endpoint; CONTRACT-CORE-API / CONTRACT-INTEL-OUTPUT (TASK-003) still to write before FE/INTEL start |
+| TASK-004 | REQ-012, 020 | Repo scaffold (core/intelligence/frontend/shared skeletons), `docker-compose.yml` (8 services), healthchecks + depends_on, `.env.example`, `.gitignore`/`.dockerignore`, GitHub Actions CI skeleton | OPS (Claude, Phase 0 session) | VER-001, VER-005 in `docs/verification.md`: clean `docker compose up -d --build` → all 8 containers healthy; CI's own lint/test/build commands all pass | Prometheus scrape targets are `down` until TASK-031 adds `/metrics` routes (expected, not a defect). CI workflow not yet run in GitHub Actions itself (no push/PR triggered) — commands verified locally/in containers only. Frontend/core/intelligence are empty skeletons — no real functionality yet |
