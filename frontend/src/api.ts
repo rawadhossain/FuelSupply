@@ -104,3 +104,26 @@ export const executeRecommendation = (rec: Recommendation) =>
       intent: `intelligence-${rec.policy}`,
     }),
   });
+
+// ---- Simulation controls — proxied through Core, never the sim directly ----
+
+export const simRun = () => req<Record<string, unknown>>("/api/internal/admin/run", { method: "POST" });
+export const simPause = () => req<Record<string, unknown>>("/api/internal/admin/pause", { method: "POST" });
+export const simStep = () => req<Record<string, unknown>>("/api/internal/admin/step", { method: "POST" });
+export const simReset = () => req<Record<string, unknown>>("/api/internal/admin/reset", { method: "POST" });
+
+export type EventType =
+  | "demand_spike" | "route_disruption" | "station_outage" | "depot_constraint"
+  | "shipment_delay" | "supply_shortfall";
+
+export const injectEvent = (body: {
+  type: EventType; duration_ticks: number; station_ids?: string[]; route_ids?: string[];
+  depot_ids?: string[]; multiplier?: number;
+}) => req<Record<string, unknown>>("/api/internal/admin/events", { method: "POST", body: JSON.stringify(body) });
+
+export type FaultType = "latency" | "unavailable" | "error_rate" | "stale_data" | "stream_disconnect";
+
+export const injectFault = (body: { type: FaultType; duration_seconds: number; delay_ms?: number; probability?: number }) =>
+  req<Record<string, unknown>>("/api/internal/admin/faults", { method: "POST", body: JSON.stringify(body) });
+
+export const clearFaults = () => req<Record<string, unknown>>("/api/internal/admin/faults/clear", { method: "POST" });

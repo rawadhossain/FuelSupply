@@ -3,6 +3,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fuelsupply_shared.observability import setup_observability
 from pydantic import BaseModel, Field
@@ -53,11 +54,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         client, on_write=make_allocation_write_hook(session_factory)
     )
     intelligence_client = IntelligenceClient(base_url=config.INTELLIGENCE_BASE_URL)
+    # /admin/* is a distinct surface (bypasses fault injection, orchestration
+    # only) — kept as its own plain httpx client rather than bolted onto
+    # SimulatorClient, which is scoped to the fault-affected /v1/* contract.
+    admin_http = httpx.AsyncClient(base_url=config.SIMULATOR_BASE_URL, timeout=10.0)
 
     app.state.supervisor = supervisor
     app.state.allocation_executor = allocation_executor
     app.state.intelligence_client = intelligence_client
     app.state.simulator_client = client
+    app.state.admin_http = admin_http
     app.state.session_factory = session_factory
     app.state.redis_cache = redis_cache
 
@@ -71,6 +77,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             run_task.cancel()
         await client.aclose()
         await intelligence_client.aclose()
+        await admin_http.aclose()
         await redis_cache.aclose()
         await engine.dispose()
 
@@ -331,3 +338,109 @@ async def execute_recommendation(req: ExecuteRecommendationRequest) -> dict:
         raise HTTPException(status, {"code": code, "message": str(exc)}) from exc
 
     return allocation.model_dump(mode="json")
+
+
+# ---- Simulation controls: proxy to /admin/* so the operator never needs the
+# simulator's own admin console — the app is the only surface they touch. ----
+
+
+class EventInjectRequest(BaseModel):
+    type: str
+    duration_ticks: int = Field(gt=0, default=20)
+    start_tick: int | None = None
+    station_ids: list[str] = Field(default_factory=list)
+    route_ids: list[str] = Field(default_factory=list)
+    depot_ids: list[str] = Field(default_factory=list)
+    multiplier: float | None = None
+
+
+class FaultInjectRequest(BaseModel):
+    type: str
+    duration_seconds: int = Field(gt=0, le=3600, default=30)
+    delay_ms: int | None = None
+    probability: float | None = None
+
+
+async def _admin_call(method: str, path: str, json_body: dict | None = None) -> dict:
+    admin_http: httpx.AsyncClient = app.state.admin_http
+    try:
+        response = await admin_http.request(method, path, json=json_body)
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, {"code": "SIMULATOR_UNREACHABLE", "message": str(exc)}) from exc
+    if response.status_code >= 400:
+        raise HTTPException(response.status_code, response.json() if response.content else {})
+    body = response.json() if response.content else {}
+    # Admin actions change simulator state right away — refresh Core's view
+    # immediately rather than waiting up to POLL_INTERVAL_SECONDS.
+    supervisor: IngestionSupervisor = app.state.supervisor
+    try:
+        await supervisor.poller.poll_once()
+    except SimulatorError:
+        pass  # already logged inside poll_once; the action itself still succeeded
+    return body
+
+
+@app.post("/internal/admin/run")
+async def admin_run() -> dict:
+    return await _admin_call("POST", "/admin/run")
+
+
+@app.post("/internal/admin/pause")
+async def admin_pause() -> dict:
+    return await _admin_call("POST", "/admin/pause")
+
+
+@app.post("/internal/admin/step")
+async def admin_step() -> dict:
+    return await _admin_call("POST", "/admin/step")
+
+
+@app.post("/internal/admin/reset")
+async def admin_reset() -> dict:
+    return await _admin_call("POST", "/admin/reset")
+
+
+@app.post("/internal/admin/events")
+async def admin_inject_event(req: EventInjectRequest) -> dict:
+    parameters: dict = {}
+    if req.station_ids:
+        parameters["station_ids"] = req.station_ids
+    if req.route_ids:
+        parameters["route_ids"] = req.route_ids
+    if req.depot_ids:
+        parameters["depot_ids"] = req.depot_ids
+    if req.multiplier is not None:
+        parameters["multiplier"] = req.multiplier
+
+    start_tick = req.start_tick
+    if start_tick is None:
+        supervisor: IngestionSupervisor = app.state.supervisor
+        start_tick = (supervisor.state.last_polled_tick or 0) + 1
+
+    return await _admin_call(
+        "POST",
+        "/admin/events",
+        {
+            "type": req.type,
+            "start_tick": start_tick,
+            "duration_ticks": req.duration_ticks,
+            "parameters": parameters,
+        },
+    )
+
+
+@app.post("/internal/admin/faults")
+async def admin_inject_fault(req: FaultInjectRequest) -> dict:
+    parameters: dict = {}
+    if req.delay_ms is not None:
+        parameters["delay_ms"] = req.delay_ms
+    if req.probability is not None:
+        parameters["probability"] = req.probability
+    return await _admin_call(
+        "POST", "/admin/faults", {"type": req.type, "duration_seconds": req.duration_seconds, "parameters": parameters}
+    )
+
+
+@app.post("/internal/admin/faults/clear")
+async def admin_clear_faults() -> dict:
+    return await _admin_call("POST", "/admin/faults/clear")

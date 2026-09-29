@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   getHealth, getState, getRecommendations, executeRecommendation,
-  type NetworkState, type Recommendation, type Allocation,
+  simRun, simPause, simStep, simReset, injectEvent, injectFault, clearFaults,
+  type NetworkState, type Recommendation, type Allocation, type EventType, type FaultType,
 } from "./api";
 
 function fmt(n: number | null | undefined): string {
@@ -9,12 +10,18 @@ function fmt(n: number | null | undefined): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const ok = ["OPEN", "AVAILABLE", "ARRIVED", "PENDING", "healthy", "PAUSED", "RUNNING"].includes(status);
-  const bad = ["OUTAGE", "DISRUPTED", "CONSTRAINED", "FAILED", "CLOSED"].includes(status);
-  const color = bad ? "#c0392b" : ok ? "#1e8449" : "#8a6d0a";
-  return <span style={{ color, fontWeight: 600 }}>{status}</span>;
+const OK = new Set(["OPEN", "AVAILABLE", "ARRIVED", "PENDING", "healthy", "PAUSED", "RUNNING", "SCHEDULED"]);
+const BAD = new Set(["OUTAGE", "DISRUPTED", "CONSTRAINED", "FAILED", "CLOSED", "unreachable"]);
+
+function Pill({ status }: { status: string }) {
+  const cls = BAD.has(status) ? "pill-bad" : OK.has(status) ? "pill-ok" : "pill-warn";
+  return <span className={`pill ${cls}`}>{status}</span>;
 }
+
+const EVENT_TYPES: EventType[] = [
+  "demand_spike", "route_disruption", "station_outage", "depot_constraint", "shipment_delay", "supply_shortfall",
+];
+const FAULT_TYPES: FaultType[] = ["latency", "unavailable", "error_rate", "stale_data", "stream_disconnect"];
 
 export default function App() {
   const [health, setHealth] = useState<string>("checking...");
@@ -24,6 +31,15 @@ export default function App() {
   const [recError, setRecError] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
   const [history, setHistory] = useState<Allocation[]>([]);
+  const [simBusy, setSimBusy] = useState(false);
+
+  const [eventType, setEventType] = useState<EventType>("demand_spike");
+  const [eventStations, setEventStations] = useState<string[]>([]);
+  const [eventMultiplier, setEventMultiplier] = useState(2);
+  const [eventDuration, setEventDuration] = useState(40);
+
+  const [faultType, setFaultType] = useState<FaultType>("latency");
+  const [faultDuration, setFaultDuration] = useState(30);
 
   const refresh = useCallback(async () => {
     try {
@@ -70,166 +86,248 @@ export default function App() {
     }
   }
 
+  async function runSimAction(fn: () => Promise<unknown>) {
+    setSimBusy(true);
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSimBusy(false);
+    }
+  }
+
+  function toggleStation(id: string) {
+    setEventStations((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function submitEvent() {
+    await runSimAction(() =>
+      injectEvent({
+        type: eventType,
+        duration_ticks: eventDuration,
+        station_ids: eventStations,
+        multiplier: eventType === "demand_spike" ? eventMultiplier : undefined,
+      }),
+    );
+  }
+
+  async function submitFault() {
+    await runSimAction(() => injectFault({ type: faultType, duration_seconds: faultDuration }));
+  }
+
+  const isRunning = state?.instance?.status === "RUNNING";
+
   return (
-    <main style={{ fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto", padding: 16 }}>
-      <div style={{ background: "#7d3c98", color: "white", padding: "6px 12px", borderRadius: 4, marginBottom: 12, fontSize: 13 }}>
-        SIMULATED ENVIRONMENT — all data below comes from the organizer-provided fuel supply simulator, not a real network.
+    <main className="page">
+      <div className="banner">SIMULATED ENVIRONMENT — all data below comes from the organizer-provided fuel supply simulator, not a real network.</div>
+
+      <div className="topbar">
+        <h1>Fuel Supply Operations</h1>
+        <div className="statline">
+          <span>Core: <Pill status={health} /></span>
+          <span>Tick: <strong>{state?.instance?.tick ?? "—"}</strong></span>
+          <span>Sim: <Pill status={state?.instance?.status ?? "—"} /></span>
+          <span>SSE: <Pill status={state?.sse_connected ? "OPEN" : "OUTAGE"} /></span>
+          {state?.any_stale && <span className="pill pill-warn">stale data</span>}
+        </div>
       </div>
 
-      <h1 style={{ marginBottom: 4 }}>Fuel Supply Operations</h1>
-      <p style={{ color: "#555", marginTop: 0 }}>
-        Core: <StatusBadge status={health} /> · Tick: {state?.instance?.tick ?? "—"} ·
-        {" "}Sim status: <StatusBadge status={state?.instance?.status ?? "—"} /> ·
-        {" "}SSE: <StatusBadge status={state?.sse_connected ? "OPEN" : "OUTAGE"} />
-        {state?.any_stale && <span style={{ color: "#c0392b", marginLeft: 8 }}>⚠ stale data</span>}
-      </p>
+      <div className="card">
+        <h2>Simulation controls</h2>
+        <div className="btn-row" style={{ marginBottom: 16 }}>
+          <button className="btn btn-primary" disabled={simBusy || isRunning} onClick={() => runSimAction(simRun)}>Run</button>
+          <button className="btn btn-ghost" disabled={simBusy || !isRunning} onClick={() => runSimAction(simPause)}>Pause</button>
+          <button className="btn btn-ghost" disabled={simBusy} onClick={() => runSimAction(simStep)}>Step 1 tick</button>
+          <button
+            className="btn btn-danger"
+            disabled={simBusy}
+            onClick={() => confirm("Reset wipes all progress and reloads the baseline scenario. Continue?") && runSimAction(simReset)}
+          >
+            Reset
+          </button>
+        </div>
 
-      <section style={{ marginTop: 24 }}>
-        <h2>Depots</h2>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-              <th>ID</th><th>Status</th><th>Diesel</th><th>Petrol</th><th>Octane</th><th>Dispatch/tick</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state?.depots.map((d) => (
-              <tr key={d.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{d.name || d.id}</td>
-                <td><StatusBadge status={d.status} /></td>
-                <td>{fmt(d.inventory.DIESEL)} / {fmt(d.capacity.DIESEL)}</td>
-                <td>{fmt(d.inventory.PETROL)} / {fmt(d.capacity.PETROL)}</td>
-                <td>{fmt(d.inventory.OCTANE)} / {fmt(d.capacity.OCTANE)}</td>
-                <td>{fmt(d.dispatch_capacity_per_tick)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+        <div className="grid-cols">
+          <div>
+            <p className="rec-meta" style={{ marginBottom: 8 }}>INJECT CRISIS EVENT</p>
+            <div className="form-row">
+              <label className="field">
+                Type
+                <select value={eventType} onChange={(e) => setEventType(e.target.value as EventType)}>
+                  {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                Duration (ticks)
+                <input type="number" value={eventDuration} min={1} onChange={(e) => setEventDuration(Number(e.target.value))} style={{ width: 80 }} />
+              </label>
+              {eventType === "demand_spike" && (
+                <label className="field">
+                  Multiplier
+                  <input type="number" step={0.1} value={eventMultiplier} onChange={(e) => setEventMultiplier(Number(e.target.value))} style={{ width: 70 }} />
+                </label>
+              )}
+            </div>
+            {(eventType === "demand_spike" || eventType === "station_outage") && state && (
+              <div className="checkbox-group" style={{ marginBottom: 10 }}>
+                {state.stations.map((s) => (
+                  <label key={s.id}>
+                    <input type="checkbox" checked={eventStations.includes(s.id)} onChange={() => toggleStation(s.id)} />
+                    {s.name || s.id}
+                  </label>
+                ))}
+              </div>
+            )}
+            <button className="btn btn-primary" disabled={simBusy} onClick={submitEvent}>Inject event</button>
+          </div>
 
-      <section style={{ marginTop: 24 }}>
-        <h2>Stations</h2>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-              <th>ID</th><th>Status</th><th>Profile</th><th>Diesel</th><th>Petrol</th><th>Octane</th><th>Demand ×</th>
-            </tr>
-          </thead>
-          <tbody>
-            {state?.stations.map((s) => (
-              <tr key={s.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{s.name || s.id}</td>
-                <td><StatusBadge status={s.status} /></td>
-                <td>{s.demand_profile}</td>
-                <td>{fmt(s.inventory.DIESEL)} / {fmt(s.capacity.DIESEL)}</td>
-                <td>{fmt(s.inventory.PETROL)} / {fmt(s.capacity.PETROL)}</td>
-                <td>{fmt(s.inventory.OCTANE)} / {fmt(s.capacity.OCTANE)}</td>
-                <td>{s.demand_multiplier !== 1 ? <b>{s.demand_multiplier}×</b> : "1×"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+          <div>
+            <p className="rec-meta" style={{ marginBottom: 8 }}>INJECT FAULT</p>
+            <div className="form-row">
+              <label className="field">
+                Type
+                <select value={faultType} onChange={(e) => setFaultType(e.target.value as FaultType)}>
+                  {FAULT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label className="field">
+                Duration (s)
+                <input type="number" value={faultDuration} min={1} max={3600} onChange={(e) => setFaultDuration(Number(e.target.value))} style={{ width: 80 }} />
+              </label>
+            </div>
+            <div className="btn-row">
+              <button className="btn btn-primary" disabled={simBusy} onClick={submitFault}>Inject fault</button>
+              <button className="btn btn-ghost" disabled={simBusy} onClick={() => runSimAction(clearFaults)}>Clear faults</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <section style={{ marginTop: 24 }}>
+      <div className="grid-cols">
+        <div className="card">
+          <h2>Depots</h2>
+          <table>
+            <thead><tr><th>ID</th><th>Status</th><th>Diesel</th><th>Petrol</th><th>Octane</th></tr></thead>
+            <tbody>
+              {state?.depots.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.name || d.id}</td>
+                  <td><Pill status={d.status} /></td>
+                  <td>{fmt(d.inventory.DIESEL)}/{fmt(d.capacity.DIESEL)}</td>
+                  <td>{fmt(d.inventory.PETROL)}/{fmt(d.capacity.PETROL)}</td>
+                  <td>{fmt(d.inventory.OCTANE)}/{fmt(d.capacity.OCTANE)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="card">
+          <h2>Stations</h2>
+          <table>
+            <thead><tr><th>ID</th><th>Status</th><th>Diesel</th><th>Petrol</th><th>Octane</th><th>×</th></tr></thead>
+            <tbody>
+              {state?.stations.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name || s.id}</td>
+                  <td><Pill status={s.status} /></td>
+                  <td>{fmt(s.inventory.DIESEL)}/{fmt(s.capacity.DIESEL)}</td>
+                  <td>{fmt(s.inventory.PETROL)}/{fmt(s.capacity.PETROL)}</td>
+                  <td>{fmt(s.inventory.OCTANE)}/{fmt(s.capacity.OCTANE)}</td>
+                  <td>{s.demand_multiplier !== 1 ? <b>{s.demand_multiplier}×</b> : "1×"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card">
         <h2>Routes</h2>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-              <th>ID</th><th>From → To</th><th>Status</th><th>Transit (ticks)</th><th>Max shipment</th>
-            </tr>
-          </thead>
+        <table>
+          <thead><tr><th>ID</th><th>From → To</th><th>Status</th><th>Transit</th><th>Max shipment</th></tr></thead>
           <tbody>
             {state?.routes.map((r) => (
-              <tr key={r.id} style={{ borderBottom: "1px solid #eee" }}>
+              <tr key={r.id}>
                 <td>{r.id}</td>
                 <td>{r.source_depot_id} → {r.destination_station_id}</td>
-                <td><StatusBadge status={r.status} /></td>
-                <td>{r.transit_ticks}</td>
-                <td>{fmt(r.max_shipment)}</td>
+                <td><Pill status={r.status} /></td>
+                <td>{r.transit_ticks} ticks</td>
+                <td>{fmt(r.max_shipment)} L</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </section>
+      </div>
 
       {state && state.events.length > 0 && (
-        <section style={{ marginTop: 24 }}>
+        <div className="card">
           <h2>Active / scheduled disruptions</h2>
-          <ul>
-            {state.events.map((e) => (
-              <li key={e.id}>
-                <b>{e.type}</b> — <StatusBadge status={e.status} /> (ticks {e.start_tick}–{e.end_tick})
-                {" "}{JSON.stringify(e.parameters)}
-              </li>
-            ))}
-          </ul>
-        </section>
+          {state.events.map((e) => (
+            <p key={e.id} className="rec-detail" style={{ fontSize: 13, color: "var(--text)" }}>
+              <b>{e.type}</b> <Pill status={e.status} /> · ticks {e.start_tick}–{e.end_tick} · {JSON.stringify(e.parameters)}
+            </p>
+          ))}
+        </div>
       )}
 
-      <section style={{ marginTop: 24 }}>
+      <div className="card">
         <h2>Recommendations</h2>
-        <button onClick={fetchRecommendations} disabled={loadingRecs} style={{ padding: "8px 16px", cursor: "pointer" }}>
+        <button className="btn btn-primary" onClick={fetchRecommendations} disabled={loadingRecs} style={{ marginBottom: 14 }}>
           {loadingRecs ? "Asking Intelligence..." : "Get recommendations"}
         </button>
-        {recError && <p style={{ color: "#c0392b" }}>Error: {recError}</p>}
+        {recError && <p className="error-text">Error: {recError}</p>}
         {assessment && (
-          <p style={{ color: "#555" }}>
+          <p className="rec-meta" style={{ marginBottom: 10 }}>
             Assessed at tick {assessment.tick} — {assessment.recommendations.length} recommendation(s)
           </p>
         )}
+        {assessment?.recommendations.length === 0 && <p className="empty">No urgent recommendations right now.</p>}
         {assessment?.recommendations.map((rec) => (
-          <div key={rec.id} style={{ border: "1px solid #ddd", borderRadius: 6, padding: 12, marginBottom: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <b>{rec.station_id} — {rec.fuel_type}</b>
-              <span>confidence {(rec.confidence * 100).toFixed(0)}% · <StatusBadge status={rec.review} /></span>
+          <div key={rec.id} className="rec-card">
+            <div className="rec-head">
+              <span>{rec.station_id} — {rec.fuel_type}</span>
+              <span className="rec-meta">{(rec.confidence * 100).toFixed(0)}% confidence · <Pill status={rec.review} /></span>
             </div>
-            <p style={{ margin: "6px 0" }}>{rec.explanation}</p>
-            <p style={{ fontSize: 13, color: "#555" }}>
+            <p className="rec-explanation">{rec.explanation}</p>
+            <p className="rec-detail">
               Risk: {(rec.impact.risk_before * 100).toFixed(0)}% → {(rec.impact.risk_after * 100).toFixed(0)}%
               {" · "}Unmet: {fmt(rec.impact.unmet_before_l)} L → {fmt(rec.impact.unmet_after_l)} L
             </p>
-            {rec.constraints.length > 0 && (
-              <p style={{ fontSize: 12, color: "#777" }}>Constraints: {rec.constraints.join("; ")}</p>
-            )}
+            {rec.constraints.length > 0 && <p className="rec-detail">Constraints: {rec.constraints.join("; ")}</p>}
             {rec.alternatives.length > 0 && (
-              <p style={{ fontSize: 12, color: "#777" }}>
-                Alternatives: {rec.alternatives.map((a) => `${a.why_not} (${fmt(a.quantity)} L)`).join("; ")}
-              </p>
+              <p className="rec-detail">Alternatives: {rec.alternatives.map((a) => `${a.why_not} (${fmt(a.quantity)} L)`).join("; ")}</p>
             )}
-            <button
-              onClick={() => approve(rec)}
-              disabled={executing === rec.id}
-              style={{ marginTop: 8, padding: "6px 14px", cursor: "pointer", background: "#1e8449", color: "white", border: "none", borderRadius: 4 }}
-            >
+            <button className="btn btn-primary" disabled={executing === rec.id} onClick={() => approve(rec)} style={{ marginTop: 10 }}>
               {executing === rec.id ? "Submitting..." : "Approve & submit"}
             </button>
           </div>
         ))}
-      </section>
+      </div>
 
-      <section style={{ marginTop: 24, marginBottom: 40 }}>
+      <div className="card">
         <h2>Decision history</h2>
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-              <th>ID</th><th>Route</th><th>Fuel</th><th>Qty (L)</th><th>Status</th><th>Created tick</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map((a) => (
-              <tr key={a.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td>{a.id}</td>
-                <td>{a.source_depot_id} → {a.destination_station_id}</td>
-                <td>{a.fuel_type}</td>
-                <td>{fmt(a.quantity)}</td>
-                <td><StatusBadge status={a.status} /></td>
-                <td>{a.created_tick}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+        {history.length === 0 && <p className="empty">No allocations yet.</p>}
+        {history.length > 0 && (
+          <table>
+            <thead><tr><th>ID</th><th>Route</th><th>Fuel</th><th>Qty (L)</th><th>Status</th><th>Tick</th></tr></thead>
+            <tbody>
+              {history.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.id}</td>
+                  <td>{a.source_depot_id} → {a.destination_station_id}</td>
+                  <td>{a.fuel_type}</td>
+                  <td>{fmt(a.quantity)}</td>
+                  <td><Pill status={a.status} /></td>
+                  <td>{a.created_tick}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </main>
   );
 }
