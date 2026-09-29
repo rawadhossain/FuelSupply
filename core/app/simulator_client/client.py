@@ -9,6 +9,7 @@ downstream (REQ-009b).
 
 from __future__ import annotations
 
+from time import perf_counter
 from typing import Generic, Self, TypeVar
 
 import httpx
@@ -26,6 +27,7 @@ from fuelsupply_shared.models import (
     Station,
     SupplyArrival,
 )
+from fuelsupply_shared.observability import record_simulator_call
 from pydantic import BaseModel, ValidationError
 
 from .errors import (
@@ -100,26 +102,36 @@ class SimulatorClient:
         await self.aclose()
 
     async def _get(self, path: str, params: dict[str, object] | None = None) -> SimulatorResponse[object]:
+        started = perf_counter()
+        status = "error"
         try:
-            response = await self._client.get(path, params=params)
-        except httpx.TimeoutException as exc:
-            raise SimulatorUnavailableError(code="TIMEOUT", message=str(exc)) from exc
-        except httpx.TransportError as exc:
-            raise SimulatorUnavailableError(code="CONNECTION_ERROR", message=str(exc)) from exc
+            try:
+                response = await self._client.get(path, params=params)
+            except httpx.TimeoutException as exc:
+                status = "timeout"
+                raise SimulatorUnavailableError(code="TIMEOUT", message=str(exc)) from exc
+            except httpx.TransportError as exc:
+                status = "connection_error"
+                raise SimulatorUnavailableError(code="CONNECTION_ERROR", message=str(exc)) from exc
 
-        if response.status_code >= 400:
-            raise _parse_error(response)
+            if response.status_code >= 400:
+                status = str(response.status_code)
+                raise _parse_error(response)
 
-        stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
-        try:
-            body = response.json()
-        except ValueError as exc:
-            # 2xx but not even valid JSON (e.g. chaos-proxy corrupt_json mode) —
-            # same REQ-009b path as a schema mismatch, not an unhandled 500.
-            raise SimulatorInvalidResponseError(
-                endpoint=path, raw_body=response.text[:500], validation_error=exc
-            ) from exc
-        return SimulatorResponse(data=body, stale=stale)
+            stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
+            try:
+                body = response.json()
+            except ValueError as exc:
+                # 2xx but not even valid JSON (e.g. chaos-proxy corrupt_json mode) —
+                # same REQ-009b path as a schema mismatch, not an unhandled 500.
+                status = "invalid_json"
+                raise SimulatorInvalidResponseError(
+                    endpoint=path, raw_body=response.text[:500], validation_error=exc
+                ) from exc
+            status = "ok"
+            return SimulatorResponse(data=body, stale=stale)
+        finally:
+            record_simulator_call(endpoint=path, status=status, seconds=perf_counter() - started)
 
     async def _get_model(
         self, path: str, model: type[BaseModel], params: dict[str, object] | None = None
@@ -146,24 +158,34 @@ class SimulatorClient:
         return SimulatorResponse(data=parsed, stale=raw.stale)
 
     async def _post(self, path: str, json_body: dict[str, object]) -> SimulatorResponse[object]:
+        started = perf_counter()
+        status = "error"
         try:
-            response = await self._client.post(path, json=json_body)
-        except httpx.TimeoutException as exc:
-            raise SimulatorUnavailableError(code="TIMEOUT", message=str(exc)) from exc
-        except httpx.TransportError as exc:
-            raise SimulatorUnavailableError(code="CONNECTION_ERROR", message=str(exc)) from exc
+            try:
+                response = await self._client.post(path, json=json_body)
+            except httpx.TimeoutException as exc:
+                status = "timeout"
+                raise SimulatorUnavailableError(code="TIMEOUT", message=str(exc)) from exc
+            except httpx.TransportError as exc:
+                status = "connection_error"
+                raise SimulatorUnavailableError(code="CONNECTION_ERROR", message=str(exc)) from exc
 
-        if response.status_code >= 400:
-            raise _parse_error(response)
+            if response.status_code >= 400:
+                status = str(response.status_code)
+                raise _parse_error(response)
 
-        stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
-        try:
-            body = response.json()
-        except ValueError as exc:
-            raise SimulatorInvalidResponseError(
-                endpoint=path, raw_body=response.text[:500], validation_error=exc
-            ) from exc
-        return SimulatorResponse(data=body, stale=stale)
+            stale = response.headers.get("X-Simulator-Stale", "").lower() == "true"
+            try:
+                body = response.json()
+            except ValueError as exc:
+                status = "invalid_json"
+                raise SimulatorInvalidResponseError(
+                    endpoint=path, raw_body=response.text[:500], validation_error=exc
+                ) from exc
+            status = "ok"
+            return SimulatorResponse(data=body, stale=stale)
+        finally:
+            record_simulator_call(endpoint=path, status=status, seconds=perf_counter() - started)
 
     async def _post_model(
         self, path: str, model: type[BaseModel], json_body: dict[str, object]

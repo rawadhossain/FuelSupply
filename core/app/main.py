@@ -2,10 +2,17 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from time import perf_counter
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fuelsupply_shared.observability import record_fallback, set_degraded, setup_observability
+from fuelsupply_shared.observability import (
+    log_decision,
+    record_decision,
+    record_fallback,
+    set_degraded,
+    setup_observability,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -316,6 +323,7 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
         ]
 
     intelligence_client: IntelligenceClient = app.state.intelligence_client
+    started = perf_counter()
     try:
         assessment = await intelligence_client.assess(
             snapshot=snapshot,
@@ -336,6 +344,16 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
         record_fallback(component="recommendation_engine", reason="ml_unavailable")
         set_degraded("core", True)
         fallback_recs = compute_fallback_recommendations(state)
+        elapsed = perf_counter() - started
+        for rec in fallback_recs:
+            record_decision(policy="core_fallback_heuristic", outcome=rec.get("review", "unknown"), seconds=elapsed)
+            log_decision(
+                decision_id=rec.get("id", "unknown"),
+                policy="core_fallback_heuristic",
+                outcome=rec.get("review", "unknown"),
+                station_id=rec.get("station_id"),
+                fuel_type=rec.get("fuel_type"),
+            )
 
         session_factory = app.state.session_factory
         async with session_factory() as session:
@@ -352,6 +370,18 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
             "degraded_reason": f"Intelligence unavailable ({exc.code}): {exc.message}",
             "recommendations": fallback_recs,
         }
+
+    elapsed = perf_counter() - started
+    policy_used = assessment.get("policy", "unknown")
+    for rec in assessment.get("recommendations", []):
+        record_decision(policy=policy_used, outcome=rec.get("review", "unknown"), seconds=elapsed)
+        log_decision(
+            decision_id=rec.get("id", "unknown"),
+            policy=policy_used,
+            outcome=rec.get("review", "unknown"),
+            station_id=rec.get("station_id"),
+            fuel_type=rec.get("fuel_type"),
+        )
 
     session_factory = app.state.session_factory
     async with session_factory() as session:

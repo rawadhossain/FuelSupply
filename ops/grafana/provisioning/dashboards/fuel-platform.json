@@ -498,7 +498,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "avg(rate(prediction_confidence_sum[5m])) / avg(rate(prediction_confidence_count[5m]))",
+          "expr": "avg(rate(intel_model_confidence_sum[5m])) / avg(rate(intel_model_confidence_count[5m]))",
           "refId": "A",
           "format": "time_series",
           "legendFormat": "avg"
@@ -508,7 +508,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(prediction_confidence_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(intel_model_confidence_bucket[5m])))",
           "refId": "B",
           "format": "time_series",
           "legendFormat": "p95"
@@ -560,7 +560,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(model_inference_seconds_bucket[1m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(intel_assess_latency_seconds_bucket[1m])))",
           "refId": "A",
           "format": "time_series"
         }
@@ -599,8 +599,8 @@
     {
       "id": 14,
       "type": "timeseries",
-      "title": "Shortage alerts by fuel/severity",
-      "description": "Shortage alerts raised by the decision engine.",
+      "title": "Shortage alerts (rate)",
+      "description": "Shortage alerts raised by the decision engine. Not broken down by fuel/severity — intel_shortage_alerts_total doesn't carry those labels.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -611,10 +611,10 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (fuel, severity) (rate(shortage_alerts_total[1m])) * 60",
+          "expr": "sum(rate(intel_shortage_alerts_total[1m])) * 60",
           "refId": "A",
           "format": "time_series",
-          "legendFormat": "{{fuel}} / {{severity}}"
+          "legendFormat": "alerts/min"
         }
       ],
       "fieldConfig": {
