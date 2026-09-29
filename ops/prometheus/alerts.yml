@@ -1,0 +1,141 @@
+groups:
+  - name: fuelsupply-demo
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"core|intelligence|sim-exporter"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down (scrape failing)"
+
+      - alert: SimulatorDown
+        expr: sim_up == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Simulator /v1/health is unreachable"
+
+      - alert: SimulatorAPIUnavailable
+        expr: sim_up == 1 and sim_api_up == 0
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Simulator is alive but /v1/metrics is failing (fault or overload)"
+
+      - alert: SimulatorStaleData
+        expr: sim_stale == 1
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Simulator responses are flagged stale (X-Simulator-Stale)"
+
+      - alert: SimulatorSlow
+        expr: sim_api_latency_seconds > 1
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Simulator /v1/metrics latency above 1s"
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (service) (rate(http_requests_total{status=~"5.."}[30s]))
+            /
+          sum by (service) (rate(http_requests_total[30s])) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} 5xx rate above 5% over 30s"
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum by (service, le) (rate(http_request_duration_seconds_bucket[1m]))
+          ) > 1
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} p95 request latency above 1s"
+
+      - alert: DegradedModeActive
+        expr: degraded_mode == 1
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} is running in degraded/cached-state mode"
+
+      - alert: FallbackActivated
+        expr: increase(fallback_activations_total[1m]) > 0
+        for: 0s
+        labels:
+          severity: info
+        annotations:
+          summary: "Fallback activated: {{ $labels.component }} / {{ $labels.reason }}"
+
+      - alert: LowPredictionConfidence
+        expr: |
+          (
+            sum(rate(prediction_confidence_sum[2m]))
+              /
+            sum(rate(prediction_confidence_count[2m]))
+          ) < 0.5
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mean prediction confidence below 0.5 over the last 2m"
+
+      - alert: CircuitBreakerOpen
+        expr: simulator_circuit_state == 2
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Simulator circuit breaker is open"
+
+      - alert: UnmetDemandRising
+        expr: increase(sim_unmet_demand_liters[1m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Unmet demand increased in the last minute"
+
+      - alert: StockoutRisk
+        expr: sim_station_stock_ratio < 0.15
+        for: 15s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.station }}{{ $labels.region }} {{ $labels.fuel }} stock ratio below 15%"
+
+      # cAdvisor on this Docker Desktop/WSL2 host exposes container-level series only
+      # under a raw cgroup `id` (no `name`/`container_label_*` labels) — matched here as
+      # the 64-hex-char docker/<id> cgroup path, excluding the root/docker/init.scope
+      # aggregate series that also lack those labels.
+      - alert: ContainerHighMemory
+        expr: |
+          container_memory_usage_bytes{id=~"/docker/[0-9a-f]{64}"}
+            /
+          container_spec_memory_limit_bytes{id=~"/docker/[0-9a-f]{64}"} > 0.9
+          and container_spec_memory_limit_bytes{id=~"/docker/[0-9a-f]{64}"} > 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container cgroup {{ $labels.id }} above 90% of its memory limit"
+
+      - alert: ContainerRestarted
+        expr: changes(container_start_time_seconds{id=~"/docker/[0-9a-f]{64}"}[5m]) > 0
+        for: 0s
+        labels:
+          severity: info
+        annotations:
+          summary: "Container cgroup {{ $labels.id }} restarted (best effort — cAdvisor lacks container name labels on Docker Desktop/WSL2, id is the raw cgroup path)"
