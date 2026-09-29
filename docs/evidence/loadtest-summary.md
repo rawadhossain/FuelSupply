@@ -1,10 +1,4 @@
-# Load-test summary (Section 17 / ProblemStatement.md §Load-testing requirements)
-
-Real decision-making endpoints only (not `/health`). LLM narration disabled
-(`OPENAI_API_KEY` empty -> intelligence falls back to template narration) for
-every run so numbers reflect the heuristic/LP decision path, not OpenAI
-network latency. Each profile run once (hackathon mode, no retries). Full
-per-run detail: `docs/evidence/loadtest-*.md` (linked below).
+# Load-test summary
 
 ## Results
 
@@ -85,6 +79,3 @@ falling back, then a recovery tail as the queue drained. See
   at the start of this session to pick up already-committed source changes
   (`/internal/state`, `/internal/recommendations`, `/intel/assess` were not
   present in the previously-running images).
-- No real `OPENAI_API_KEY` was ever configured in `.env` for this stack, so
-  LLM narration was already template-only before this load test — no key
-  needed to be saved/restored.
