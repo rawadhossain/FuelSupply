@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fuelsupply_shared.observability import setup_observability
 from sqlalchemy import func, select
 
 from app import config
@@ -62,6 +63,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Fuel Supply Core Service", lifespan=lifespan)
+
+setup_observability(app, service="core")
 
 
 @app.get("/health")

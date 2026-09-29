@@ -1,0 +1,22 @@
+# Normalize all text to LF in the repo and in working trees (Windows CRLF breaks
+# shell scripts and YAML mounted into Linux containers).
+* text=auto eol=lf
+
+*.sh       text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+Dockerfile* text eol=lf
+Makefile   text eol=lf
+*.template text eol=lf
+*.conf     text eol=lf
+
+# Binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.avif binary
+*.woff  binary
+*.woff2 binary
