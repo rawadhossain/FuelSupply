@@ -1,30 +1,61 @@
 # Architecture
 
-Governed by `docs/decisions.md` ADR-002 to ADR-006, which source `/SPEC.md`. Requirement IDs refer to `docs/requirements.md`.
+This page separates the architecture present in the current checkout from the intended integrated design. Branch details and exact source refs are in [branch-inventory.md](branch-inventory.md). Requirements are indexed in [requirements.md](requirements.md); accepted choices are in [decisions.md](decisions.md).
 
-## Component graph
+## Current checkout: `jessan_appli`
 
-```
- BUP Fuel Supply Simulator (given)            Prometheus ─► Grafana
-  /v1/*  /admin/*                                  ▲  scrape
-        ▲  │ REST (truth) + SSE (hint)             │
-        │  ▼                                       │
- ┌──────────────────────────────┐  REST   ┌────────┴─────────────────┐
- │ Core Service (FastAPI)       │◄───────►│ Intelligence Service     │
- │ poller + SSE listener        │         │ (FastAPI)                │
- │ Postgres writer              │         │ forecast, anomaly,       │
- │ allocation executor          │         │ allocator, LLM narration │
- │ REST + WebSocket API         │         └──────────────────────────┘
- └───────┬───────────┬──────────┘
-         │           │ pub/sub, latest-state cache
-    Postgres       Redis
-         │
-  WebSocket / REST
-         ▼
- React + TS + Vite operator dashboard
+```mermaid
+flowchart LR
+  SIM[Simulator container] -. planned REST / SSE .-> CORE[Core FastAPI\nhealth only]
+  CORE -. planned service contract .-> INTEL[Intelligence FastAPI\nhealth only]
+  CORE -. planned API .-> FE[React UI\nplaceholder]
+  PG[(PostgreSQL)] -. planned persistence .- CORE
+  REDIS[(Redis)] -. planned cache .- CORE
+  PROM[Prometheus] -. scrape configured\nmetrics routes absent .-> CORE
+  PROM -. scrape configured\nmetrics routes absent .-> INTEL
 ```
 
-## Components
+Solid implementation in this branch consists of service shells, shared simulator models, and deployment scaffolding. Dashed edges and data stores describe the planned architecture, not working data flow in this checkout.
+
+## Intended integrated architecture
+
+```mermaid
+flowchart LR
+  subgraph World[Organizer-provided simulated world]
+    SIM[Fuel Supply Simulator\n/v1 REST · /v1/stream · /admin for rehearsal]
+  end
+  subgraph Platform[Team platform]
+    CORE[Core Service\nREST poller · SSE hint listener\nvalidation · cache/store · action executor]
+    STORE[(PostgreSQL\nstate, history, audit)]
+    CACHE[(Redis\nlatest state / fan-out)]
+    INTEL[Intelligence Service\nforecast · detect · project\nrecommend · explain]
+    FALLBACK[Shared deterministic heuristic\nCore fallback]
+    FE[React operator interface]
+    METRICS[Prometheus] --> GRAF[Grafana]
+  end
+  SIM -->|REST snapshots are truth| CORE
+  SIM -. change hint; then Core re-GETs .-> CORE
+  CORE <--> STORE
+  CORE <--> CACHE
+  CORE -->|snapshot + new demand rows| INTEL
+  INTEL -->|assessment, risks, recommendations| CORE
+  CORE -. timeout / model unavailable .-> FALLBACK
+  FALLBACK --> CORE
+  FE <-->|REST / WebSocket| CORE
+  CORE -->|operator-approved allocation only| SIM
+  CORE -. metrics and logs .-> METRICS
+  INTEL -. metrics and logs .-> METRICS
+```
+
+## Ownership and trust boundaries
+
+| Component | Owns | Does not own |
+|---|---|---|
+| Simulator | Simulated world state, event execution, allocation outcomes | Team forecasts or decisions |
+| Core | Simulator client, polling/SSE resync, input validation, cached state, persistence, frontend API, idempotent allocation writes | Forecast algorithms or direct operator-facing decisions |
+| Intelligence | Analysis of supplied snapshots/history; forecasts, signals, risk, candidate plans, explanations | Simulator calls, allocation submission, approval |
+| Shared policy module | Deterministic allocation fallback callable by Core when Intelligence is unavailable | Network access or state mutation |
+| Frontend | Shows state and recommendation rationale; operator review/approval interaction | Direct simulator access or decision execution |
 
 | Component | Responsibility | Technology | Requirement IDs |
 |---|---|---|---|
@@ -39,16 +70,18 @@ Governed by `docs/decisions.md` ADR-002 to ADR-006, which source `/SPEC.md`. Req
 | Load test | Locust against the allocation/decision path | Locust | REQ-015 |
 | CI/CD | Lint, test, build, push | GitHub Actions | REQ-020 |
 
-## Flows and boundaries
+The integrated `origin/master` Intelligence design adds an offline-capable profile forecaster, CUSUM detection, two-echelon projection, a default heuristic with optional LP, review confidence rules, and optional OpenAI narration. Details and evidence boundaries are in [intelligence.md](intelligence.md) and [ml-architecture.md](ml-architecture.md).
 
-- **Steady state:** Core polls REST and re-GETs the affected resource on each SSE event, then upserts Postgres and refreshes the Redis snapshot, then pushes over WebSocket to the dashboard. Core asks the Intelligence Service for forecasts, risk, and recommendations from bounded recent history; the dashboard shows them.
-- **Decision to action:** Operator approves a recommendation, and Core's executor submits an allocation with a deterministic key. The response (201/200/409/...) is reconciled into Postgres and the audit log, and the dashboard follows PENDING → IN_TRANSIT → ARRIVED/FAILED. Auto-submit is off by default (human review of consequential decisions).
-- **AI flow:** Intelligence Service input is Core-supplied state and history; output is forecast/risk with confidence, ranked allocation candidates, and a narration string. It has no simulator access. Optimization output is compared with the heuristic (ADR-006).
-- **External calls:** Simulator (no auth; explicit timeout on every call) and OpenAI API (isolated, timeout, templated fallback). `OPENAI_API_KEY` via `.env` only (git-ignored).
-- **Startup:** Both services must tolerate `SIMULATOR_START_MODE=paused` and a not-yet-ready simulator without crashing; health checks gate Compose startup order.
-- **Testing:** Use `/admin/reset` + `/admin/step` for deterministic integration tests, not wall-clock sleeps.
+## Failure handling targets
 
-## Failure and fallback paths
+| Failure | Intended response |
+|---|---|
+| Intelligence timeout/unavailable | Core invokes shared heuristic, marks output degraded/fallback, requires human review |
+| Invalid simulator payload | Reject snapshot, alert, preserve last good state |
+| Stale simulator response | Show stale state and reduce recommendation confidence |
+| SSE loss or queue overflow | Keep polling; reconnect and fully resync over REST |
+| Optional LLM unavailable | Return deterministic template explanation |
+| Low confidence / consequential scarcity | Require operator review before action |
 
 | Failure | User-visible behavior | Fallback | Owner | Verified |
 |---|---|---|---|---|

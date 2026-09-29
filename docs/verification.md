@@ -1,5 +1,7 @@
 # Verification evidence
 
+This ledger is branch-scoped: its entries record evidence for the foundation checkout and should not be conflated with later artifacts on `origin/master`. Verification claims from another ref should identify that ref, command, environment, and result explicitly before being copied here.
+
 Record actual commands, observed behavior, screenshots/links, or API results. Status is only PASS, FAIL, or BLOCKED.
 
 | ID | Task / requirement | Method | Happy path evidence | Failure-path evidence | Status | Verified by | Time |
