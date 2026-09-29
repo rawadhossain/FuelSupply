@@ -1,6 +1,6 @@
 """Rolling-horizon LP allocation policy (model predictive control), solved with SciPy HiGHS.
 
-max  Σ srv  − λ·Σ overflow + μ·(terminal stock) − γ·z·(mean series demand) − ε·Σ t·x_t
+max  Σ w_s·srv  − λ·Σ overflow + μ·(terminal stock) − γ·z·(mean series demand) − ε·Σ t·x_t
 s.t. station & depot balances, capacities, route max, dispatch/tick, creation-time headroom,
      route/station/depot availability windows from events; z ≥ unmet share of every series.
 Only the offset-0 moves are executed; re-solve next tick. See docs/ml-architecture.md §4.
@@ -32,7 +32,9 @@ class LPResult:
 
 def solve(snap: Snapshot, demand: dict, H: int = 96, overflow_penalty: float = 0.2,
           terminal_value: float = 0.02, fairness: float = 0.5, lateness: float = 1e-4,
-          min_batch: float = 1000.0, time_limit: float = 5.0) -> LPResult:
+          min_batch: float = 1000.0, time_limit: float = 5.0, priorities: dict | None = None) -> LPResult:
+    """priorities: station_id -> weight on litres served (default 1.0) — priority-based allocation."""
+    prio = priorities or {}
     fuels = snap.fuels
     S = [(s, f) for s in snap.stations for f in fuels if f in snap.stations[s].capacity]
     D = [(d, f) for d in snap.depots for f in fuels if f in snap.depots[d].capacity]
@@ -62,7 +64,7 @@ def solve(snap: Snapshot, demand: dict, H: int = 96, overflow_penalty: float = 0
             ub[ix(t, i)] = rt.max_shipment if ok else 0.0
             c[ix(t, i)] = lateness * t   # tie-break: ship as early as useful, not at the last possible tick
         for i, (s, f) in enumerate(S):
-            c[isrv(t, i)] = -1.0
+            c[isrv(t, i)] = -float(prio.get(s, 1.0))
             ub[isrv(t, i)] = demand[(s, f)][t] if open_st[s][t] else 0.0
             # + existing inbound so already-committed arrivals can never make the model infeasible
             ub[iI(t, i)] = snap.stations[s].capacity[f] + float(inb.get((s, f), np.zeros(H)).sum())

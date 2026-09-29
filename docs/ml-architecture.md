@@ -193,7 +193,7 @@ MSTL ([statsmodels](https://www.statsmodels.org/dev/examples/notebooks/generated
 
 **Reinforcement learning:** not pursued. Deterministic dynamics plus a 0.08 s exact LP leave RL nothing to learn within the hackathon time, and the brief requires beating a rule/heuristic baseline (Brief §8).
 
-**Final dependency set for Intelligence:** `numpy`, `pandas`, `scipy`, `pydantic`, `fastapi`, `prometheus-client` (+ `anthropic` optional). No XGBoost, LightGBM, OR-Tools or statsforecast.
+**Final dependency set for Intelligence:** `numpy`, `pandas`, `scipy`, `pydantic`, `fastapi`, `prometheus-client` (+ `openai` optional, for narration). No XGBoost, LightGBM, OR-Tools or statsforecast.
 
 ## 13. Implementation results (2026-09-29)
 
@@ -247,3 +247,61 @@ In the live crisis run the LP is slightly better (356 L less unmet), at about 6�
 1. Events are active for ticks **start..end inclusive**. A route disrupted from tick S is still AVAILABLE when you submit at tick S, but the truck departs at S+1 and would FAIL. The schedule therefore treats the route as closed from offset 0.
 2. During a station outage, demand is still recorded, served = 0 and everything counts as unmet.
 3. The replay (`intelligence/replay.py`) now reproduces live results within 0.2% (identical in baseline). Use it to rehearse demo scenarios without resetting the simulator.
+
+## 15. Completed partial capabilities (2026-09-29)
+
+| Brief item | Implementation | Evidence |
+|---|---|---|
+| Abnormal inventory changes | `signals.reconcile_inventory`: each tick, actual stock change vs what sales (served litres), truck arrivals, supply arrivals and dispatches explain; alert if > max(25 L, 0.2% of capacity). Depot dispatch checked under both "deduct at creation" and "at departure" conventions | 0 alarms over 672 replayed ticks (baseline + crisis); injected −800 L leak and +300 L depot gain are flagged exactly |
+| Supply-chain bottlenecks | `assess._bottlenecks`: which limits capped this tick's trucks, depot dispatch utilisation, and at-risk stations the plan does not fix, with the reason (station closed / no open route / no stock at reachable depots / dispatch full / not urgent yet) | Scarce-stock test explains the unserved station ("no diesel left at any depot that can reach it") |
+| Priority-based allocation | `priorities={station_id: weight}` on `Assessor`: heuristic ranks by stockout time ÷ weight; LP weights litres served per station | Tests: when fuel is enough for only one station, the priority station gets it (both policies); default weights leave all benchmark numbers identical |
+| Estimated supply arrival | `SupplyHistory`: learns each depot's observed delay (first-seen planned tick vs arrival), ETA = planned tick + mean delay, with on-time rate and basis text | Test: 4-tick late delivery → next ETA shifted by 4 |
+| Transport delay prediction | `allocations_at_risk`: in-transit trucks are never delayed by this simulator, but a PENDING truck whose route is disrupted at departure **fails**. Flagged while it can still be cancelled and re-routed | Test: scheduled disruption at departure tick → flagged with advice |
+
+Bugs found and fixed while doing this:
+1. **Reset:** after `/admin/reset` the tick goes backwards and every snapshot was being rejected. Now the per-run memory is reset and a `simulation_reset` signal is raised.
+2. **Spike-end false alarm:** the last spiked tick was judged with the post-event multiplier (9 false demand alarms over 3 days). The multiplier in force on that tick is now used, so there are 0.
+
+Output contract additions: `bottlenecks`, `supply_outlook`, `priorities`; new signal types `inventory_anomaly`, `allocation_at_risk`, `simulation_reset`.
+Only remaining brief items are Generative AI (LLM explanations, incident explanation, state summary, investigation assistant) — implemented in §16 with the OpenAI API (`OPENAI_API_KEY`).
+
+## 16. Generative AI layer — OpenAI (2026-09-29)
+
+Provider changed from Anthropic to **OpenAI** (team decision). `intelligence/narrate.py` uses Chat Completions via the `openai` SDK. Config is in the git-ignored `.env`: `OPENAI_API_KEY`, `OPENAI_MODEL` (default `gpt-5.4-mini`), `LLM_TIMEOUT_SECONDS=8`, `LLM_MAX_OUTPUT_TOKENS=400`.
+
+| Brief item | Function | Input facts | Template fallback |
+|---|---|---|---|
+| Human-readable decision explanations | `explain_recommendation(rec)` | Finished recommendation (action, impact, binding constraints, alternatives, confidence, review reasons) | Existing template sentence |
+| Incident explanation | `explain_incident(out)` | Incident signals (events, disruptions, delays, anomalies, at-risk trucks) + top risks + recommendations | Grouped by type, most severe first |
+| Supply-chain state summarization | `summarize_state(out)` | Network cover per fuel, top risks, events, recommendations/reviews, bottlenecks, supply outlook | Shift summary sentence |
+| Operator investigation assistant | `investigate(question, out)` | The question plus the current state (all risks, signals, recommendations, bottlenecks) | "Assistant offline" plus the facts for any station named in the question |
+
+**Guardrails (ADR-005)**
+- The LLM only rewrites facts; it never chooses trucks or quantities.
+- Every number in its text must match a number in the facts it was given, otherwise the text is rejected and the template is used.
+- No key, a timeout or an API error means the template is used, never an exception.
+- The system prompt states the environment is simulated, and "[Simulated environment]" is enforced on every text.
+- Recommendation and incident texts are cached, so each is paid for once.
+- Stats are kept for REQ-013 (calls, ok, failed, rejected, fallback, latency p50/p95).
+- `enrich(out)` adds `explanation_text`, `incident_summary`, `state_summary` and `genai_stats` to an assessment.
+
+**Evidence:**
+- 10 tests with a fake LLM, 43/43 in total: used when valid, hallucinated numbers rejected, API errors fall back, cache, investigation context, enrich.
+- OpenAI SDK signature checked (`max_completion_tokens`, `response_format`, client `timeout`/`max_retries`).
+- Live text: run `run_genai_demo.bat`. It switches `.env` to OpenAI names without printing the key, runs the tests, then asks OpenAI for all four outputs on a real mid-crisis state and writes `intelligence/artifacts/genai_demo_output.json`.
+
+## 17. Intelligence Service, contract, load test and rehearsal (2026-09-29)
+
+- **Service:** `intelligence/service.py` (FastAPI) exposes `POST /intel/assess`, `POST /intel/ask`, `GET /intel/summary`, `GET /health` and `GET /metrics`. The simulator JSON is validated with Pydantic (`shared/models.py`). It runs with `uvicorn intelligence.service:app --port 8100`, `run_intelligence.bat`, or Docker (`intelligence/Dockerfile`, a Compose service with a healthcheck; `.env` is passed at runtime and never baked into the image).
+- **Contract:** CONTRACT-INTEL-OUTPUT in `docs/api-contracts.md`, with real examples in `loadtest/sample_assess_request.json` and `loadtest/sample_assess_response.json`.
+- **Metrics (SPEC §11):**
+  - `intel_prediction_error_mape`, `intel_model_confidence`, `intel_shortage_alerts_total`, `intel_decisions_total{policy,review}`, `intel_fallback_total`;
+  - `intel_signals_total{type}`, `intel_invalid_input_total`, `intel_llm_calls_total{outcome}`;
+  - `intel_assess_latency_seconds`, `intel_assess_requests_total`, `intel_last_tick`, `intel_projected_unmet_liters`;
+  - plus process CPU and memory.
+- **Load test (VER-014):**
+  - The heuristic saturates at about 57 assessments/s on one core (p95 98 ms at 10 users).
+  - The LP reaches about 10/s.
+  - 0 errors throughout.
+- **Rehearsal (VER-015):** `python -m intelligence.rehearse` walks all 14 demo steps offline.
+- **Demo timing rule:** inject live crises before about tick 200, while supply still exists.

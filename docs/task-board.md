@@ -44,7 +44,7 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 
 | ID | Req | Blocker | Owner | Needed from | Proposed alternative |
 |---|---|---|---|---|---|
-| TASK-018 | REQ-035 | Anthropic model, timeout, cost cap not chosen (RES-006); API key not provisioned | INTEL | Team | Build the template path first; wire the LLM after |
+| TASK-018 | REQ-035 | RESOLVED: OpenAI chosen (RES-006); narration built in `intelligence/narrate.py`; needs `OPENAI_API_KEY` in `.env` for live text | INTEL | Team | Build the template path first; wire the LLM after |
 
 ## REVIEW
 | ID | Req | Description | Owner | Reviewer | Verification evidence |

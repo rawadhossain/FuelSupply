@@ -116,7 +116,8 @@ def project(snap: Snapshot, demand: dict, H: int, moves=()) -> Projection:
 
 
 def network_cover(snap: Snapshot, demand: dict, H: int) -> dict:
-    """Per fuel: ticks of demand covered by all stock + in-transit + scheduled arrivals within H."""
+    """Per fuel: ticks of demand covered by all stock + in-transit + scheduled arrivals within H.
+    demand_next_24h_l = forecast demand over the whole horizon (H=96 ticks = 24 h), not per hour."""
     out = {}
     for f in snap.fuels:
         stock = sum(s.inventory.get(f, 0) for s in snap.stations.values()) + \
@@ -127,5 +128,5 @@ def network_cover(snap: Snapshot, demand: dict, H: int) -> dict:
         cum = np.cumsum(sum(v for (s, ff), v in demand.items() if ff == f))
         covered = int(np.searchsorted(cum, stock, side="right"))
         out[f] = {"cover_ticks": covered if covered < H else None, "stock_l": round(stock, 1),
-                  "demand_h_l": round(float(cum[-1]), 1), "systemic_shortage": covered < H}
+                  "demand_next_24h_l": round(float(cum[-1]), 1), "systemic_shortage": covered < H}
     return out

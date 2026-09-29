@@ -141,7 +141,8 @@ class ReplaySim:
                 sv = min(st.inventory[f], d) if st.status == "OPEN" else 0.0
                 st.inventory[f] -= sv; self.served += sv; self.unmet += d - sv
                 self.stockout_ticks += (d - sv) > 1e-6
-                rows.append({"station_id": sid, "fuel_type": f, "tick": t, "demand_liters": d})
+                rows.append({"station_id": sid, "fuel_type": f, "tick": t, "demand_liters": d,
+                             "served_liters": sv, "unmet_liters": d - sv})
         s.allocations = [a for a in s.allocations if a.status != "ARRIVED"]
         self._events(t, "end")
         s.tick += 1

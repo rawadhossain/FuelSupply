@@ -9,3 +9,6 @@ intelligence/artifacts/benchmark_log.txt
 commit_msg.txt
 .env
 git_commit_push.bat
+intelligence/artifacts/genai_log.txt
+.env.*
+!.env.example

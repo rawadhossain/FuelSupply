@@ -44,7 +44,7 @@ Priority: **MUST** (viable submission), **SHOULD** (score-additive), **COULD** (
 | REQ-027 | UX | **NEW.** Regional demand view (actual vs forecast per region) and a system-alerts feed. | Brief §6 | Completes the 12-item list |
 | REQ-028 | AI | **NEW.** Policy benchmark: no-action vs heuristic (vs optimizer if built) on the same seed + events; report service_level, unmet litres, allocation failures. | Brief §8, §23 "decision quality" | Strongest evidence for Intelligence 20% |
 | REQ-029 | AI | **NEW.** Forecast/detection evaluation on held-out data (time split) with metrics recorded (MAE/MAPE, interval coverage, detection P/R). | Brief §20 experiment tracking, §23 "appropriate methodology" | Intelligence |
-| REQ-035 | GenAI | LLM narration of finished recommendations and incident summaries via Anthropic API; numbers come from the object; timeout + template fallback. **Moved from COULD to SHOULD** (ADR-005 puts it in scope; brief lists "human-readable decision explanations"). | Brief §7, SPEC §6 | Intelligence, Demo |
+| REQ-035 | GenAI | LLM narration of finished recommendations and incident summaries via OpenAI API (changed from Anthropic 2026-09-29); numbers come from the object; timeout + template fallback. **Moved from COULD to SHOULD** (ADR-005 puts it in scope; brief lists "human-readable decision explanations"). | Brief §7, SPEC §6 | Intelligence, Demo |
 | REQ-043 | Data | **NEW.** Document data used/generated (simulator exports, derived features, crisis scenarios) per brief §16. | Brief §16 | Compliance |
 
 ## COULD

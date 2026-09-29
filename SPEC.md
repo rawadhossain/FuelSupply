@@ -2,7 +2,7 @@
 
 Event: BUP CSE Fest 2026 Hackathon Finals
 Document type: Self-contained team specification (problem + decisions + roadmap)
-Stack decided: Python/FastAPI backend, React/TypeScript frontend, LLM narration via Anthropic API
+Stack decided: Python/FastAPI backend, React/TypeScript frontend, LLM narration via OpenAI API
 Team: 4-5 members, specialized roles
 
 ---
@@ -300,7 +300,7 @@ Prometheus + Grafana: scrape both backend services
 | Cache/pub-sub | Redis | Latest-snapshot cache, fan-out to frontend |
 | Forecasting/detection | scikit-learn, XGBoost | Time-series/tabular fits better than deep learning here |
 | Optimization | OR-Tools or PuLP | Constrained allocation (v2, benchmarked vs. heuristic) |
-| LLM | Anthropic API | Narration/explanation layer only — not decision-making |
+| LLM | OpenAI API (Chat Completions, default `gpt-5.4-mini`, set in `.env`) | Narration/explanation layer only — not decision-making |
 | Frontend | React + TypeScript + Vite | Team familiarity, fast iteration |
 | Charts | Recharts / Observable Plot | Dashboard visuals |
 | Realtime to browser | WebSocket (own backend, not simulator SSE) | Decouples frontend from simulator's queue/reconnect quirks |

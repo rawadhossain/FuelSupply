@@ -22,7 +22,10 @@ def dispatch_used(snap: Snapshot, did: str) -> float:
                if a.source_depot_id == did and a.status == "PENDING" and a.created_tick == snap.tick)
 
 
-def plan(snap: Snapshot, demand: dict, H: int = 96) -> list[Move]:
+def plan(snap: Snapshot, demand: dict, H: int = 96, priorities: dict | None = None) -> list[Move]:
+    """priorities: station_id -> weight (default 1.0). Higher weight = served earlier when stock is scarce:
+    urgency is ranked by stockout time divided by weight."""
+    w = priorities or {}
     base = project(snap, demand, H)
     dep_left = {(d, f): dp.inventory.get(f, 0.0) for d, dp in snap.depots.items() for f in dp.capacity}
     disp_left = {d: dp.dispatch_capacity_per_tick - dispatch_used(snap, d) for d, dp in snap.depots.items()}
@@ -31,7 +34,9 @@ def plan(snap: Snapshot, demand: dict, H: int = 96) -> list[Move]:
         if a.status in ("PENDING", "IN_TRANSIT"):
             k = (a.destination_station_id, a.fuel_type)
             inbound[k] = inbound.get(k, 0.0) + a.quantity
-    order = sorted(base.unmet, key=lambda k: (base.stockout_offset(k) is None, base.stockout_offset(k) or 0))
+    order = sorted(base.unmet, key=lambda k: (base.stockout_offset(k) is None,
+                                              (base.stockout_offset(k) or 0) / max(w.get(k[0], 1.0), 1e-6),
+                                              -w.get(k[0], 1.0)))
     moves: list[Move] = []
     for sid, f in order:
         so = base.stockout_offset((sid, f))

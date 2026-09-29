@@ -7,3 +7,20 @@ services:
       SIMULATOR_START_MODE: ${SIMULATOR_START_MODE:-paused}
     ports:
       - "8000:8000"
+
+  intelligence:
+    build:
+      context: .
+      dockerfile: intelligence/Dockerfile
+    env_file:
+      - path: .env          # OPENAI_API_KEY, OPENAI_MODEL, ... (optional: without it narration uses templates)
+        required: false
+    environment:
+      INTEL_POLICY: ${INTEL_POLICY:-heuristic}
+    ports:
+      - "${INTELLIGENCE_PORT:-8100}:8100"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8100/health').status==200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5

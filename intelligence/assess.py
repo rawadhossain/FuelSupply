@@ -18,7 +18,7 @@ from shared.snapshot import Snapshot
 from . import policy_lp
 from .detect import CusumDetector
 from .forecast import ProfileForecaster
-from .signals import SignalTracker
+from .signals import SignalTracker, SupplyHistory, allocations_at_risk, reconcile_inventory
 
 DEFAULT_ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), "artifacts", "profile-v1")
 
@@ -31,10 +31,8 @@ def _phi(x: float) -> float:
     return 0.5 * (1 + math.erf(x / math.sqrt(2)))
 
 
-def validate(snap: Snapshot, last_tick: int | None) -> None:
+def validate(snap: Snapshot) -> None:
     errs = []
-    if last_tick is not None and snap.tick < last_tick:
-        errs.append(f"tick went backwards {last_tick}->{snap.tick} (reset?)")
     for s in snap.stations.values():
         for f, v in s.inventory.items():
             if v < 0 or v > s.capacity.get(f, math.inf) * 1.01:
@@ -54,7 +52,9 @@ def validate(snap: Snapshot, last_tick: int | None) -> None:
 
 class Assessor:
     def __init__(self, artifact_dir: str = DEFAULT_ART, horizon: int = 96, risk_window: int = 96,
-                 tick_minutes: int = 15):
+                 tick_minutes: int = 15, priorities: dict | None = None):
+        """priorities: station_id -> weight (default 1.0) for priority-based allocation."""
+        self.artifact_dir, self.priorities = artifact_dir, priorities or {}
         self.model = ProfileForecaster.load(artifact_dir)
         with open(os.path.join(artifact_dir, "detector.json")) as fh:
             dj = json.load(fh)
@@ -67,10 +67,30 @@ class Assessor:
         self.abs_err = defaultdict(lambda: deque(maxlen=16))     # online relative error
         self.first_tick: int | None = None
         self.last_tick: int | None = None
+        self.prev_snap: Snapshot | None = None
+        self.supply = SupplyHistory()
+
+    def _reset_state(self) -> None:
+        """Simulator was reset (tick went backwards): forget all per-run memory, keep the model."""
+        with open(os.path.join(self.artifact_dir, "detector.json")) as fh:
+            dj = json.load(fh)
+        sigma = {tuple(k.split("|")): v for k, v in dj["sigma"].items()}
+        self.tracker = SignalTracker(CusumDetector(sigma=sigma, k=dj["k"], h=dj["h"]))
+        self.recent.clear(); self.abs_err.clear()
+        self.first_tick = self.last_tick = None
+        self.prev_snap, self.supply = None, SupplyHistory()
 
     # ------------------------------------------------------------------ helpers
     def _expected_now(self, snap: Snapshot, s: str, f: str, tick: int) -> float:
-        return float(self.model.point([s], [f], [tick % 96], [snap.stations[s].demand_multiplier])[0])
+        """Expected demand for an observed row at `tick`, using the multiplier that was in force on
+        that tick. The previous snapshot's schedule knows events starting at, or ending after, its
+        tick (events are active start..end inclusive), so it is exact for rows at prev.tick."""
+        prev = self.prev_snap
+        if prev is not None and prev.tick == tick and s in prev.stations:
+            mult = float(schedule.multiplier_schedule(prev, s, 1)[0])
+        else:
+            mult = snap.stations[s].demand_multiplier
+        return float(self.model.point([s], [f], [tick % 96], [mult])[0])
 
     def _risk_prob(self, snap, key, demand50, spread, inbound_extra=None) -> float:
         s, f = key
@@ -95,9 +115,10 @@ class Assessor:
         """policy: "heuristic" (default — ties the LP on service level with 5x fewer shipments, see
         artifacts/replay_*.json), "lp" (optimiser; falls back to heuristic on failure), "fallback"."""
         t_start = time.perf_counter()
-        validate(snap, self.last_tick)
-        if self.last_tick is not None and snap.tick < self.last_tick:
-            self.first_tick = None
+        was_reset = self.last_tick is not None and snap.tick < self.last_tick
+        if was_reset:
+            self._reset_state()
+        validate(snap)
         self.first_tick = snap.tick if self.first_tick is None else self.first_tick
         self.last_tick = snap.tick
         H = self.H
@@ -118,6 +139,20 @@ class Assessor:
         signals += [{"type": "demand_anomaly_active", "entity_id": f"{k[0]}|{k[1]}", "severity": "medium",
                      "since_tick": v.since_tick, "direction": v.alarm} for k, v in self.tracker.detector.active().items()]
         signals += self.tracker.state_signals(snap)
+        if was_reset:
+            signals.append({"type": "simulation_reset", "entity_id": "simulator", "severity": "medium"})
+        # abnormal inventory changes (needs the previous tick's snapshot + served litres)
+        prev = self.prev_snap
+        if prev is not None:
+            served = {(r["station_id"], r["fuel_type"]): float(r["served_liters"]) for r in rows
+                      if r.get("tick") == prev.tick and "served_liters" in r}
+            if served:
+                signals += reconcile_inventory(prev, snap, served)
+        # transport-failure prediction + supply arrival outlook
+        signals += allocations_at_risk(snap)
+        self.supply.update(snap)
+        supply_outlook = self.supply.outlook(snap, self.tick_minutes)
+        self.prev_snap = snap
 
         # 2. forecast
         d50, d90, spread, fc_out = {}, {}, {}, []
@@ -157,7 +192,7 @@ class Assessor:
         moves: list[Move] = []
         if policy == "lp":
             try:
-                r = policy_lp.solve(snap, d50, H)
+                r = policy_lp.solve(snap, d50, H, priorities=self.priorities)
                 lp_info = {"status": r.status, "solve_seconds": round(r.solve_seconds, 3)}
                 if r.status == "optimal":
                     moves = r.moves
@@ -166,7 +201,7 @@ class Assessor:
             except Exception as ex:   # never let the optimiser take the pipeline down
                 lp_info, policy_used = {"status": f"error: {ex}"}, "fallback"
         if policy in ("heuristic", "fallback") or policy_used == "fallback":
-            moves = heuristic.plan(snap, d50, H)
+            moves = heuristic.plan(snap, d50, H, priorities=self.priorities)
             policy_used = "heuristic" if policy == "heuristic" else "fallback"
 
         # 5-7. recommendations
@@ -179,10 +214,12 @@ class Assessor:
                           "stockout_in_hours_p50": self._hours(so), "stockout_in_hours_p90": self._hours(so90),
                           "projected_unmet_l_24h": round(float(base.unmet[key].sum()), 1),
                           "stockout_risk": round(p, 3), "risk_window_h": self._hours(self.W),
-                          "risk": "high" if p >= 0.5 or (so is not None and so <= 8) else
+                          # band by time-to-stockout (operator urgency); probability reported separately
+                          "risk": "high" if so is not None and so <= 12 else
                                   "medium" if so is not None and so <= 48 else "low"})
         recs = [self._recommend(snap, m, d50, spread, base, cover, active, policy_used) for m in moves]
         recs.sort(key=lambda r: (-r["impact"]["risk_before"], -r["impact"]["unmet_avoided_l"]))
+        bottlenecks = self._bottlenecks(snap, moves, recs, risks, H)
         return {"tick": snap.tick, "model_version": self.model.version, "policy": policy_used,
                 "degraded": policy_used == "fallback", "lp": lp_info,
                 "latency_ms": round((time.perf_counter() - t_start) * 1000, 1),
@@ -191,7 +228,49 @@ class Assessor:
                               "unmet_l_24h_with_plan": round(project(snap, d50, H, moves).total_unmet(), 1),
                               "overflow_l_24h_with_plan": round(project(snap, d50, H, moves).total_overflow(), 1)},
                 "signals": signals, "risks": sorted(risks, key=lambda r: -r["stockout_risk"]),
+                "bottlenecks": bottlenecks, "supply_outlook": supply_outlook,
+                "priorities": self.priorities,
                 "forecasts": fc_out, "recommendations": recs}
+
+    # ------------------------------------------------------------ bottlenecks
+    def _bottlenecks(self, snap, moves, recs, risks, H) -> dict:
+        """Where the network is constrained right now: which limits capped this tick's shipments,
+        how loaded each depot's dispatch capacity is, and at-risk stations the plan does not fix."""
+        kinds = {"route max_shipment": "route_capacity", "stock": "depot_stock",
+                 "dispatch left": "depot_dispatch_capacity", "station headroom": "station_tank_space"}
+        counts: dict = {}
+        for r in recs:
+            for b in r["binding_constraints"]:
+                k = next((v for key, v in kinds.items() if key in b), "other")
+                counts[k] = counts.get(k, 0) + 1
+        util = {}
+        for d, dp in snap.depots.items():
+            used = heuristic.dispatch_used(snap, d)
+            planned = sum(m.quantity for m in moves if snap.routes[m.route_id].source_depot_id == d)
+            util[d] = round((used + planned) / dp.dispatch_capacity_per_tick, 3)
+        covered = {(r["station_id"], r["fuel_type"]) for r in recs}
+        unresolved = []
+        for rk in risks:
+            key = (rk["station_id"], rk["fuel_type"])
+            if key in covered or rk["stockout_in_hours_p50"] is None or rk["stockout_in_hours_p50"] > 24:
+                continue
+            s, f = key
+            open_routes = [r for r in snap.routes.values() if r.destination_station_id == s
+                           and schedule.route_open(snap, r.id, 1)[0]]
+            if snap.stations[s].status != "OPEN":
+                why = "station closed"
+            elif not open_routes:
+                why = "no open route into the station"
+            elif all(snap.depots[r.source_depot_id].inventory.get(f, 0) < heuristic.MIN_QTY for r in open_routes):
+                why = f"no {f.lower()} left at any depot that can reach it"
+            elif all(util.get(r.source_depot_id, 0) >= 0.999 for r in open_routes):
+                why = "depot dispatch capacity used up this tick"
+            else:
+                why = "not urgent yet: will be scheduled closer to the stockout"
+            unresolved.append({"station_id": s, "fuel_type": f, "stockout_in_hours": rk["stockout_in_hours_p50"],
+                               "reason": why})
+        return {"binding_constraint_counts": counts, "depot_dispatch_utilisation": util,
+                "at_risk_not_addressed": unresolved}
 
     # ---------------------------------------------------------------- one rec
     def _recommend(self, snap, m: Move, d50, spread, base, cover, active, policy_used) -> dict:
@@ -279,5 +358,7 @@ class Assessor:
                            "unmet_avoided_l": round(u0 - u1, 1),
                            "overflow_before_l": round(ov0, 1), "overflow_after_l": round(ov1, 1),
                            "risk_before": round(p0, 3), "risk_after": round(p1, 3)},
-                "confidence": round(conf, 2), "review": review, "review_reasons": hard + reasons,
+                "confidence": round(conf, 2), "review": review,
+                "review_reasons": hard + reasons if review == "HUMAN_REVIEW" else [],   # why a human must approve
+                "confidence_notes": reasons,                                            # caveats that lowered confidence
                 "policy": policy_used, "explanation": text}

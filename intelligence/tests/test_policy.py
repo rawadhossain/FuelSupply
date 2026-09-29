@@ -117,7 +117,7 @@ def test_assess_contract_fields(policy):
     assert len(out["risks"]) == 12 and len(out["forecasts"]) == 12
     for r in out["recommendations"]:
         for k in ("station_id", "fuel_type", "action", "alternatives", "constraints", "impact", "confidence",
-                  "review", "review_reasons", "explanation"):
+                  "review", "review_reasons", "confidence_notes", "explanation"):
             assert k in r
         assert r["alternatives"] and "Simulated" in r["explanation"]
         assert r["impact"]["unmet_after_l"] <= r["impact"]["unmet_before_l"]
@@ -145,3 +145,22 @@ def test_closed_loop_replay_beats_no_action(demand_df):
     heur = run("heuristic", 150, demand_df)
     assert heur["service_level"] > 0.99 > none["service_level"]
     assert heur["rejected"] == {}
+
+
+def test_review_reasons_only_when_review_required():
+    out = Assessor().assess(initial_snapshot(), [], policy="heuristic")
+    for r in out["recommendations"]:
+        if r["review"] == "AUTO_ELIGIBLE":
+            assert r["review_reasons"] == []
+        else:
+            assert r["review_reasons"]
+    def boom(*a, **k):
+        raise RuntimeError("down")
+    import intelligence.policy_lp as pl
+    orig, pl.solve = pl.solve, boom
+    try:
+        s = initial_snapshot(); s.stations["station-tongi"].inventory["DIESEL"] = 100.0
+        fb = Assessor().assess(s, [], policy="lp")
+        assert fb["recommendations"] and all(r["review_reasons"] for r in fb["recommendations"])
+    finally:
+        pl.solve = orig

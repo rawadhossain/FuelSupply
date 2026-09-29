@@ -23,7 +23,7 @@ Source for ADR-002 to ADR-006: `/SPEC.md` (team specification, written by a team
 | Cache / pub-sub | Redis (latest-state cache, fan-out to frontend) |
 | Forecasting / detection | scikit-learn, XGBoost |
 | Optimization | OR-Tools or PuLP (v2, benchmarked against heuristic) |
-| LLM | Anthropic API, narration/explanation only |
+| LLM | OpenAI API, narration/explanation only (changed from Anthropic on 2026-09-29, team decision) |
 | Frontend | React + TypeScript + Vite; Recharts / Observable Plot |
 | Browser realtime | WebSocket from our backend (not the simulator SSE) |
 | Metrics / logs | Prometheus + Grafana; `structlog` |
@@ -58,7 +58,7 @@ Source for ADR-002 to ADR-006: `/SPEC.md` (team specification, written by a team
 ## ADR-005 — LLM is narration only
 
 - **Status:** ACCEPTED (per SPEC.md §6, §8 Phase 2).
-- **Decision:** The Anthropic API wraps a finished recommendation object (station, projected stockout, recommended allocation, expected impact) into human-readable text. It never chooses allocations or quantities.
+- **Decision:** The OpenAI API (changed from Anthropic, 2026-09-29) wraps a finished recommendation object (station, projected stockout, recommended allocation, expected impact) into human-readable text. It never chooses allocations or quantities.
 - **Consequences:** The LLM is an optional dependency. Every narration path needs a timeout and a templated non-LLM fallback so an API or network failure cannot block a recommendation (REQ-008 must be satisfied without it). The API key comes from an env var, never committed (REQ-016). Model ID and cost limits are RES-006.
 
 ## ADR-006 — Allocator progression: heuristic first, optimization second, RL optional
@@ -70,5 +70,5 @@ Source for ADR-002 to ADR-006: `/SPEC.md` (team specification, written by a team
 ## Open items (need team input, not blocking Phase 0–1)
 
 1. Fallback heuristic location (ADR-003).
-2. Anthropic model choice and per-request timeout/cost cap (RES-006).
+2. ~~OpenAI model choice and per-request timeout/cost cap (RES-006).~~ Resolved: `OPENAI_MODEL` (default `gpt-5.4-mini`), 8 s timeout, 400 output tokens, 1 retry — all in `.env`.
 3. Is Redis pub/sub actually needed at one Core instance? SPEC.md specifies it; it is kept, but it is first in line for cutting (see `docs/cut-list.md`).
