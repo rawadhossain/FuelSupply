@@ -84,7 +84,10 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export type HealthSummary = { status: string; components: { name: string; status: string }[] };
+
 export const getHealth = () => req<{ status: string; service: string }>("/api/health");
+export const getHealthSummary = () => req<HealthSummary>("/api/internal/health-summary");
 export const getState = () => req<NetworkState>("/api/internal/state");
 export const getStoreState = () => req<Record<string, unknown>>("/api/internal/store-state");
 

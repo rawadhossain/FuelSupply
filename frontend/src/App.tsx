@@ -1,9 +1,42 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  getHealth, getState, getRecommendations, executeRecommendation,
+  getHealth, getHealthSummary, getState, getRecommendations, executeRecommendation,
   simRun, simPause, simStep, simReset, injectEvent, injectFault, clearFaults,
-  type NetworkState, type Recommendation, type Allocation, type EventType, type FaultType,
+  type NetworkState, type Recommendation, type Allocation, type EventType, type FaultType, type HealthSummary,
 } from "./api";
+
+type Alert = { level: "bad" | "warn" | "info"; text: string };
+
+function computeAlerts(state: NetworkState | null): Alert[] {
+  if (!state) return [];
+  const alerts: Alert[] = [];
+
+  if (state.any_stale) alerts.push({ level: "warn", text: "Simulator data flagged stale — figures may be out of date." });
+  if (!state.sse_connected) alerts.push({ level: "warn", text: "Live updates disconnected — falling back to polling." });
+
+  for (const e of state.events) {
+    if (e.status === "ACTIVE" || e.status === "SCHEDULED") {
+      alerts.push({ level: e.status === "ACTIVE" ? "bad" : "warn", text: `${e.type.replace(/_/g, " ")} ${e.status.toLowerCase()} (ticks ${e.start_tick}–${e.end_tick})` });
+    }
+  }
+
+  for (const s of state.stations) {
+    for (const fuel of ["DIESEL", "PETROL", "OCTANE"] as const) {
+      const ratio = s.capacity[fuel] > 0 ? s.inventory[fuel] / s.capacity[fuel] : 1;
+      if (ratio < 0.15) {
+        alerts.push({ level: "bad", text: `${s.name || s.id}: ${fuel.toLowerCase()} at ${(ratio * 100).toFixed(0)}% capacity — shortage risk.` });
+      }
+    }
+  }
+
+  for (const a of state.allocations) {
+    if (a.status === "FAILED") {
+      alerts.push({ level: "bad", text: `Allocation #${a.id} failed${a.failure_reason ? `: ${a.failure_reason}` : "."}` });
+    }
+  }
+
+  return alerts;
+}
 
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
@@ -32,6 +65,9 @@ export default function App() {
   const [executing, setExecuting] = useState<string | null>(null);
   const [history, setHistory] = useState<Allocation[]>([]);
   const [simBusy, setSimBusy] = useState(false);
+  const [healthSummary, setHealthSummary] = useState<HealthSummary | null>(null);
+
+  const alerts = useMemo(() => computeAlerts(state), [state]);
 
   const [eventType, setEventType] = useState<EventType>("demand_spike");
   const [eventStations, setEventStations] = useState<string[]>([]);
@@ -49,6 +85,11 @@ export default function App() {
       setHistory(s.allocations);
     } catch {
       setHealth("unreachable");
+    }
+    try {
+      setHealthSummary(await getHealthSummary());
+    } catch {
+      setHealthSummary(null);
     }
   }, []);
 
@@ -131,6 +172,40 @@ export default function App() {
           <span>Sim: <Pill status={state?.instance?.status ?? "—"} /></span>
           <span>SSE: <Pill status={state?.sse_connected ? "OPEN" : "OUTAGE"} /></span>
           {state?.any_stale && <span className="pill pill-warn">stale data</span>}
+        </div>
+      </div>
+
+      <div className="grid-cols">
+        <div className="card">
+          <h2>System health</h2>
+          {!healthSummary && <p className="empty">Checking components...</p>}
+          {healthSummary && (
+            <table>
+              <tbody>
+                {healthSummary.components.map((c) => (
+                  <tr key={c.name}>
+                    <td style={{ textTransform: "capitalize" }}>{c.name.replace(/_/g, " ")}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <Pill status={c.status === "healthy" ? "healthy" : c.status === "down" ? "FAILED" : "DEGRADED"} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card">
+          <h2>Alerts</h2>
+          {alerts.length === 0 && <p className="empty">No active alerts.</p>}
+          {alerts.map((a, i) => (
+            <p key={i} className="rec-detail" style={{ fontSize: 13, color: "var(--text)", display: "flex", gap: 8, alignItems: "center" }}>
+              <span className={`pill ${a.level === "bad" ? "pill-bad" : a.level === "warn" ? "pill-warn" : "pill-ok"}`}>
+                {a.level}
+              </span>
+              {a.text}
+            </p>
+          ))}
         </div>
       </div>
 

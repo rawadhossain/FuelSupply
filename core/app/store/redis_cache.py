@@ -43,5 +43,8 @@ class RedisStateCache:
         raw = await self._client.get(STATE_KEY)
         return json.loads(raw) if raw else None
 
+    async def ping(self) -> bool:
+        return bool(await self._client.ping())
+
     async def aclose(self) -> None:
         await self._client.aclose()
