@@ -4,3 +4,5 @@
 |---|---|---|---|---|
 | 2026-09-29T14:14:47+0600 | kill intelligence | ServiceDown | 22.3 | TIMEOUT |
 | 2026-09-29T14:15:11+0600 | start intelligence | ServiceDown | TIMEOUT | 14.2 |
+| 2026-09-29T14:46:44+0600 | kill intelligence | ServiceDown | 22.3 | TIMEOUT |
+| 2026-09-29T14:47:27+0600 | start intelligence | ServiceDown | TIMEOUT | 18.2 |
