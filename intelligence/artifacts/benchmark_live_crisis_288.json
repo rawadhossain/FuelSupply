@@ -1,0 +1,54 @@
+[
+  {
+    "policy": "none",
+    "scenario": "crisis",
+    "ticks": 288,
+    "served_demand_liters": 85900.0,
+    "unmet_demand_liters": 226086.665,
+    "service_level": 0.275332,
+    "allocation_liters": 0.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 0,
+    "allocation_responses": {},
+    "invalid_snapshots": 0,
+    "assess_p50_ms": null,
+    "assess_p95_ms": null,
+    "wall_s": 41.5
+  },
+  {
+    "policy": "heuristic",
+    "scenario": "crisis",
+    "ticks": 288,
+    "served_demand_liters": 311631.015,
+    "unmet_demand_liters": 355.65,
+    "service_level": 0.99886,
+    "allocation_liters": 256380.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 44,
+    "allocation_responses": {
+      "201": 44
+    },
+    "invalid_snapshots": 0,
+    "assess_p50_ms": 6.6,
+    "assess_p95_ms": 13.5,
+    "wall_s": 50.6
+  },
+  {
+    "policy": "lp",
+    "scenario": "crisis",
+    "ticks": 288,
+    "served_demand_liters": 311986.665,
+    "unmet_demand_liters": 0.0,
+    "service_level": 1.0,
+    "allocation_liters": 307990.0,
+    "allocation_failures": 0,
+    "allocations_accepted": 271,
+    "allocation_responses": {
+      "201": 271
+    },
+    "invalid_snapshots": 0,
+    "assess_p50_ms": 92.7,
+    "assess_p95_ms": 120.2,
+    "wall_s": 81.6
+  }
+]

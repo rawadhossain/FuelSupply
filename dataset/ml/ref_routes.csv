@@ -1,0 +1,7 @@
+id,source_depot_id,destination_station_id,transit_ticks,max_shipment,status
+route-gazipur-mirpur,depot-gazipur,station-mirpur,2,7000.0,AVAILABLE
+route-gazipur-tongi,depot-gazipur,station-tongi,2,6500.0,AVAILABLE
+route-patiya-karnaphuli,depot-patiya,station-karnaphuli,2,7000.0,AVAILABLE
+route-patiya-coxsbazar,depot-patiya,station-coxsbazar,3,6000.0,AVAILABLE
+route-gazipur-karnaphuli,depot-gazipur,station-karnaphuli,4,5000.0,AVAILABLE
+route-patiya-mirpur,depot-patiya,station-mirpur,4,5000.0,AVAILABLE

@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "scenario_id": "baseline",
+  "scenario_version": "1.0",
+  "seed": 12345,
+  "sim_time": "2026-01-21T20:00:00",
+  "tick": 2000,
+  "tick_minutes": 15,
+  "status": "PAUSED"
+}

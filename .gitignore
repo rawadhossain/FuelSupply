@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+dataset/run_log.txt
+dataset/crisis_log.txt
+intelligence/artifacts/benchmark_log.txt
+.git_push_log.txt
+commit_msg.txt
+.env
+git_commit_push.bat

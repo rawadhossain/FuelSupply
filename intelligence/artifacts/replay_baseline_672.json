@@ -1,0 +1,50 @@
+[
+  {
+    "policy": "none",
+    "scenario": "baseline",
+    "ticks": 672,
+    "service_level": 0.1319,
+    "served_l": 85900,
+    "unmet_l": 565414,
+    "overflow_l": 73000,
+    "allocations": 0,
+    "rejected": {},
+    "stockout_series_hours": 1731.5,
+    "total_supply_l": 553900,
+    "assess_p50_ms": null,
+    "assess_p95_ms": null,
+    "wall_s": 0.9
+  },
+  {
+    "policy": "heuristic",
+    "scenario": "baseline",
+    "ticks": 672,
+    "service_level": 0.8484,
+    "served_l": 552550,
+    "unmet_l": 98764,
+    "overflow_l": 1350,
+    "allocations": 86,
+    "rejected": {},
+    "stockout_series_hours": 280.8,
+    "total_supply_l": 553900,
+    "assess_p50_ms": 10.9,
+    "assess_p95_ms": 20.4,
+    "wall_s": 12.1
+  },
+  {
+    "policy": "lp",
+    "scenario": "baseline",
+    "ticks": 672,
+    "service_level": 0.8499,
+    "served_l": 553570,
+    "unmet_l": 97744,
+    "overflow_l": 0,
+    "allocations": 443,
+    "rejected": {},
+    "stockout_series_hours": 277.0,
+    "total_supply_l": 553900,
+    "assess_p50_ms": 74.7,
+    "assess_p95_ms": 182.3,
+    "wall_s": 71.6
+  }
+]
