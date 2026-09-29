@@ -21,7 +21,6 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 | TASK-020 | REQ-001 | Dashboard against mocked Core contract: status grid, alerts feed, recommendation review/approve, decision history, simulated-data labelling | FE | TASK-003 | frontend | Renders from mock; then from live Core with no code change |
 | TASK-021 | REQ-001, 014 | WebSocket client, degraded/stale banners, health page view | FE | TASK-020, TASK-030 | frontend | Banner appears under `unavailable` and `stale_data` faults |
 | TASK-030 | REQ-009 | Resilience wiring: tenacity backoff, circuit breaker on simulator and Intelligence calls, cached-state degraded mode, low-confidence human-review flag | INT + INTEL | TASK-010, 016 | core/resilience | Each of the four SPEC.md §9 conditions reproducible and observed |
-| TASK-031 | REQ-013, 014 | Metrics (app, system, intelligence), structlog events, `/health` per service and aggregated status page | OPS | TASK-002 | core, intelligence | Status page shows real p95, error rate, component health |
 | TASK-032 | REQ-026 | Grafana dashboard provisioned as code | OPS | TASK-031 | ops/grafana | Dashboard appears after `docker compose up` with no manual steps |
 | TASK-033 | REQ-015 | Locust load test on allocation/decision path; record avg/p50/p95/p99, throughput, error rate, concurrency, resources | OPS | TASK-012 or 017 | loadtest/ | Results recorded in `docs/verification.md` |
 | TASK-034 | REQ-021 | pytest contract tests for every documented error code, replay/mismatch, fault handling; use `/admin/reset` + `/admin/step` | INT | TASK-012 | tests/ | Suite green in CI |
@@ -47,6 +46,7 @@ Stack is ACCEPTED (ADR-002 to ADR-006). Tasks follow SPEC.md §8 phases. Phase 0
 ## REVIEW
 | ID | Req | Description | Owner | Reviewer | Verification evidence |
 |---|---|---|---|---|---|
+| TASK-031 | REQ-013, 014 | Shared observability module (Prometheus metrics, structlog JSON logging, `/metrics`, `/ready`); one import + `setup_observability(...)` call added to `core/app/main.py` and `intelligence/app/main.py`; `/health` untouched; aggregated status page deferred to TASK-032/FE | OPS (Claude, this session) | Unassigned | VER-006, VER-007 in `docs/verification.md` |
 
 ## DONE
 | ID | Req | Description | Owner | Evidence | Remaining risk |

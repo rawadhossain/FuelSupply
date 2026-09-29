@@ -82,6 +82,12 @@ Define a contract before independent producers and consumers implement it. Schem
 {"detail":{"code":"CANNOT_CANCEL","message":"Only pending allocations can be cancelled"}}
 ```
 
+## CONTRACT-OBSERVABILITY
+
+Metrics, structured logging, and `/ready` contract for `shared/fuelsupply_shared/observability.py`,
+used identically by `core` and `intelligence`. Full catalogue, env vars, and examples:
+`docs/contracts/observability.md`. Status: ACCEPTED (TASK-031).
+
 ## CONTRACT-001 — Template
 
 | Field | Value |
