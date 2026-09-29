@@ -92,13 +92,171 @@ function Icon({ name, size = 17 }: { name: string; size?: number }) {
 
 const NAV_ITEMS = [
   { id: "overview", label: "Dashboard", icon: "dashboard" },
-  { id: "network", label: "Network", icon: "network" },
+  { id: "network", label: "Map", icon: "network" },
   { id: "depots", label: "Depots", icon: "depot" },
   { id: "stations", label: "Stations", icon: "station" },
   { id: "recommendations", label: "AI Insights", icon: "insights" },
   { id: "history", label: "Allocations", icon: "allocations" },
   { id: "alerts-section", label: "Alerts", icon: "alerts" },
 ];
+
+/* ---- Circular progress gauge (service level) — plain ring, no fabricated data ---- */
+
+function Gauge({ value, size = 76, stroke = 9 }: { value: number | null; size?: number; stroke?: number }) {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const v = value == null ? 0 : Math.min(1, Math.max(0, value));
+  const offset = c * (1 - v);
+  return (
+    <div className="gauge-wrap" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--accent)" strokeWidth={stroke}
+          strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className="gauge-center">
+        <strong>{value == null ? "—" : Math.round(value * 100)}</strong>
+        <span>/100</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Fleet map: schematic depot -> station layout (no real geo-coordinates in the
+   simulator's data model), with trucks positioned along each route by real transit
+   progress (created/departure/expected-arrival ticks) — not animated for show, this
+   reflects actual allocation state each poll. ---- */
+
+type Node = { id: string; name: string; x: number; y: number };
+
+function allocProgress(a: Allocation, currentTick: number | null): number {
+  if (a.status === "ARRIVED") return 1;
+  if (currentTick == null) return 0;
+  if (a.departure_tick == null) return 0.03; // queued at the depot, not yet dispatched
+  if (a.expected_arrival_tick == null || a.expected_arrival_tick <= a.departure_tick) return 0.5;
+  const t = (currentTick - a.departure_tick) / (a.expected_arrival_tick - a.departure_tick);
+  return Math.min(1, Math.max(0, t));
+}
+
+function MapPanel({ state }: { state: NetworkState | null }) {
+  const layout = useMemo(() => {
+    if (!state) return null;
+    const width = 820;
+    const rows = Math.max(state.depots.length, state.stations.length, 1);
+    const height = Math.max(240, rows * 72 + 40);
+    const colX = { depot: 90, station: width - 90 };
+
+    const place = (list: { id: string; name: string }[], x: number): Node[] => {
+      const step = list.length > 1 ? (height - 60) / (list.length - 1) : 0;
+      return list.map((item, i) => ({
+        id: item.id,
+        name: item.name || item.id,
+        x,
+        y: list.length > 1 ? 30 + i * step : height / 2,
+      }));
+    };
+
+    const depotNodes = place(state.depots, colX.depot);
+    const stationNodes = place(state.stations, colX.station);
+    const depotPos = new Map(depotNodes.map((n) => [n.id, n]));
+    const stationPos = new Map(stationNodes.map((n) => [n.id, n]));
+
+    const routeLines = state.routes
+      .map((r) => {
+        const from = depotPos.get(r.source_depot_id);
+        const to = stationPos.get(r.destination_station_id);
+        if (!from || !to) return null;
+        return { id: r.id, from, to, available: r.status === "AVAILABLE" };
+      })
+      .filter((r): r is { id: string; from: Node; to: Node; available: boolean } => r !== null);
+
+    const currentTick = state.instance?.tick ?? null;
+    const trucks = state.allocations
+      .filter((a) => a.status === "PENDING" || a.status === "IN_TRANSIT")
+      .map((a) => {
+        const from = depotPos.get(a.source_depot_id);
+        const to = stationPos.get(a.destination_station_id);
+        if (!from || !to) return null;
+        const t = allocProgress(a, currentTick);
+        return {
+          id: a.id,
+          x: from.x + (to.x - from.x) * t,
+          y: from.y + (to.y - from.y) * t,
+          angle: (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI,
+          inTransit: a.status === "IN_TRANSIT",
+          label: `#${a.id} ${a.fuel_type} ${fmt(a.quantity)} L · ${a.source_depot_id} → ${a.destination_station_id} · ${a.status}`,
+        };
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null);
+
+    return { width, height, depotNodes, stationNodes, routeLines, trucks };
+  }, [state]);
+
+  if (!layout) {
+    return <div className="map-panel"><p className="empty" style={{ padding: 16 }}>Loading network…</p></div>;
+  }
+
+  const { width, height, depotNodes, stationNodes, routeLines, trucks } = layout;
+
+  return (
+    <div className="map-panel">
+      <svg className="map-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Fleet deployment map">
+        {routeLines.map((r) => (
+          <line
+            key={r.id}
+            x1={r.from.x} y1={r.from.y} x2={r.to.x} y2={r.to.y}
+            stroke={r.available ? "var(--ok)" : "var(--bad)"}
+            strokeWidth={1.5}
+            strokeDasharray={r.available ? undefined : "5 4"}
+            opacity={0.45}
+          >
+            <title>{r.id} · {r.available ? "available" : "disrupted"}</title>
+          </line>
+        ))}
+
+        {depotNodes.map((n) => (
+          <g key={n.id} transform={`translate(${n.x} ${n.y})`}>
+            <title>{n.name} (depot)</title>
+            <polygon points="-10,-2 0,-10 10,-2" fill="var(--ink)" />
+            <rect x="-9" y="-2" width="18" height="11" rx="1.5" fill="var(--ink)" />
+            <text y={30} textAnchor="middle" fontSize="11" fontWeight={600} fill="var(--text)">{n.name}</text>
+          </g>
+        ))}
+
+        {stationNodes.map((n) => (
+          <g key={n.id} transform={`translate(${n.x} ${n.y})`}>
+            <title>{n.name} (destination)</title>
+            <circle cx="0" cy="-4" r="7" fill="var(--accent)" />
+            <polygon points="-6,1 6,1 0,13" fill="var(--accent)" />
+            <circle cx="0" cy="-4" r="2.4" fill="#fff" />
+            <text y={30} textAnchor="middle" fontSize="11" fontWeight={600} fill="var(--text)">{n.name}</text>
+          </g>
+        ))}
+
+        {trucks.map((t) => (
+          <g key={t.id} transform={`translate(${t.x} ${t.y}) rotate(${t.angle})`}>
+            <title>{t.label}</title>
+            <rect x="-9" y="-5" width="14" height="8" rx="1.5" fill={t.inTransit ? "var(--accent)" : "#fff"} stroke="var(--ink)" strokeWidth={1.2} />
+            <rect x="5" y="-3" width="5" height="6" rx="1" fill={t.inTransit ? "var(--accent)" : "#fff"} stroke="var(--ink)" strokeWidth={1.2} />
+            <circle cx="-5" cy="4.5" r="1.8" fill="var(--ink)" />
+            <circle cx="3" cy="4.5" r="1.8" fill="var(--ink)" />
+          </g>
+        ))}
+      </svg>
+      <div className="map-legend">
+        <span className="map-legend-item"><span className="map-legend-swatch" style={{ background: "var(--ink)" }} /> Depot</span>
+        <span className="map-legend-item"><span className="map-legend-swatch" style={{ background: "var(--accent)" }} /> Station (destination)</span>
+        <span className="map-legend-item"><span className="map-legend-swatch" style={{ background: "var(--ok)" }} /> Route available</span>
+        <span className="map-legend-item"><span className="map-legend-swatch" style={{ background: "var(--bad)" }} /> Route disrupted</span>
+        <span className="map-legend-item"><span className="map-legend-swatch" style={{ background: "var(--accent)", borderRadius: "50%" }} /> Truck in transit</span>
+        <span>{trucks.length} truck{trucks.length === 1 ? "" : "s"} currently deployed</span>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [health, setHealth] = useState<string>("checking...");
@@ -118,6 +276,8 @@ export default function App() {
 
   const [eventType, setEventType] = useState<EventType>("demand_spike");
   const [eventStations, setEventStations] = useState<string[]>([]);
+  const [eventRoutes, setEventRoutes] = useState<string[]>([]);
+  const [eventDepots, setEventDepots] = useState<string[]>([]);
   const [eventMultiplier, setEventMultiplier] = useState(2);
   const [eventDuration, setEventDuration] = useState(40);
 
@@ -217,16 +377,34 @@ export default function App() {
     }
   }
 
-  function toggleStation(id: string) {
-    setEventStations((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function toggleFrom(list: string[], setList: (v: string[]) => void, id: string) {
+    setList(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
 
   async function submitEvent() {
+    // route_ids/depot_ids empty does NOT mean "all" despite the integration guide —
+    // verified live: an empty list disrupts nothing. A real target list is required.
+    if (eventType === "route_disruption" && eventRoutes.length === 0) {
+      alert("Pick at least one route to disrupt — an empty selection has no effect (simulator quirk, not a UI bug).");
+      return;
+    }
+    if (eventType === "depot_constraint" && eventDepots.length === 0) {
+      alert("Pick at least one depot to constrain — an empty selection has no effect (simulator quirk, not a UI bug).");
+      return;
+    }
+    if (state?.instance?.status !== "RUNNING") {
+      const ok = confirm(
+        "Simulator is not RUNNING. The event will sit SCHEDULED and won't take effect until you Run or Step past its start tick. Inject anyway?",
+      );
+      if (!ok) return;
+    }
     await runSimAction(() =>
       injectEvent({
         type: eventType,
         duration_ticks: eventDuration,
         station_ids: eventStations,
+        route_ids: eventRoutes,
+        depot_ids: eventDepots,
         multiplier: eventType === "demand_spike" ? eventMultiplier : undefined,
       }),
     );
@@ -262,6 +440,14 @@ export default function App() {
     };
   }, [state]);
 
+  const serviceLevelStatus = (v: number | null) => {
+    if (v == null) return { label: "No data yet", cls: "" };
+    if (v >= 0.9) return { label: "Doing great", cls: "" };
+    if (v >= 0.7) return { label: "Stable", cls: "" };
+    if (v >= 0.5) return { label: "Under pressure", cls: "" };
+    return { label: "At risk", cls: "error-text" };
+  };
+
   // ---- Recent activity timeline (real allocations, newest first) ----
   const recentActivity = useMemo(() => history.slice(-6).reverse(), [history]);
 
@@ -275,6 +461,7 @@ export default function App() {
             <span>Intelligence &amp; Resilience</span>
           </div>
         </div>
+        <div className="sidebar-section-label">Overview</div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <a
@@ -299,8 +486,8 @@ export default function App() {
           </div>
           <div className="sidebar-sim-btns">
             <button className="btn btn-primary btn-sm" disabled={simBusy || isRunning} onClick={() => runSimAction(simRun)}>Run</button>
-            <button className="btn btn-ghost btn-sm" disabled={simBusy || !isRunning} onClick={() => runSimAction(simPause)}>Pause</button>
-            <button className="btn btn-ghost btn-sm" disabled={simBusy} onClick={() => runSimAction(simStep)}>Step</button>
+            <button className="btn btn-ghost btn-sm" disabled={simBusy || !isRunning} onClick={() => runSimAction(simPause)} style={{ color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Pause</button>
+            <button className="btn btn-ghost btn-sm" disabled={simBusy} onClick={() => runSimAction(simStep)} style={{ color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Step</button>
             <button
               className="btn btn-danger btn-sm"
               disabled={simBusy}
@@ -313,8 +500,6 @@ export default function App() {
       </aside>
 
       <main className="main">
-        <div className="banner">SIMULATED ENVIRONMENT — all data below comes from the organizer-provided fuel supply simulator, not a real network.</div>
-
         <div className="topbar" id="overview">
           <h1>Fuel Supply Operations</h1>
           <div className="statline">
@@ -349,11 +534,11 @@ export default function App() {
               <p className="kpi-sub">At 0% on any fuel</p>
             </div>
           </div>
-          <div className="kpi-card">
-            <div className="kpi-icon accent"><Icon name="dashboard" /></div>
-            <div className="kpi-body">
-              <p className="kpi-label">Service level</p>
-              <div className="kpi-value">{kpis?.serviceLevel != null ? `${(kpis.serviceLevel * 100).toFixed(1)}%` : "—"}</div>
+          <div className="gauge-card">
+            <Gauge value={kpis?.serviceLevel ?? null} />
+            <div className="gauge-body">
+              <p>Service level</p>
+              <p className="gauge-status">{serviceLevelStatus(kpis?.serviceLevel ?? null).label}</p>
               <p className="kpi-sub">{kpis ? `${fmt(kpis.allocationLiters)} L delivered · ${kpis.allocationFailures} failed` : "cumulative since reset"}</p>
             </div>
           </div>
@@ -361,32 +546,8 @@ export default function App() {
 
         <div className="grid-2" id="network">
           <div className="card">
-            <h2>Network</h2>
-            <div className="network-panel">
-              <div className="network-bg" />
-              <div className="network-rows">
-                {state?.depots.map((d) => {
-                  const routes = state.routes.filter((r) => r.source_depot_id === d.id);
-                  return (
-                    <div className="network-row" key={d.id}>
-                      <div className="network-node">
-                        <span className="network-node-dot" style={{ background: BAD.has(d.status) ? "var(--bad)" : "var(--ok)" }} />
-                        <Icon name="depot" size={14} /> {d.name || d.id}
-                      </div>
-                      <div className="network-routes">
-                        {routes.length === 0 && <span className="rec-meta">no outgoing routes</span>}
-                        {routes.map((r) => (
-                          <span key={r.id} className={`route-chip ${r.status === "AVAILABLE" ? "ok" : "bad"}`} title={`${r.id} · ${r.transit_ticks} ticks · max ${fmt(r.max_shipment)} L`}>
-                            → {r.destination_station_id}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {!state && <p className="empty">Loading network…</p>}
-              </div>
-            </div>
+            <h2>Fleet map</h2>
+            <MapPanel state={state} />
           </div>
 
           <div className="card">
@@ -476,8 +637,28 @@ export default function App() {
                 <div className="checkbox-group" style={{ marginBottom: 10 }}>
                   {state.stations.map((s) => (
                     <label key={s.id}>
-                      <input type="checkbox" checked={eventStations.includes(s.id)} onChange={() => toggleStation(s.id)} />
+                      <input type="checkbox" checked={eventStations.includes(s.id)} onChange={() => toggleFrom(eventStations, setEventStations, s.id)} />
                       {s.name || s.id}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {eventType === "route_disruption" && state && (
+                <div className="checkbox-group" style={{ marginBottom: 10 }}>
+                  {state.routes.map((r) => (
+                    <label key={r.id}>
+                      <input type="checkbox" checked={eventRoutes.includes(r.id)} onChange={() => toggleFrom(eventRoutes, setEventRoutes, r.id)} />
+                      {r.source_depot_id} → {r.destination_station_id}
+                    </label>
+                  ))}
+                </div>
+              )}
+              {eventType === "depot_constraint" && state && (
+                <div className="checkbox-group" style={{ marginBottom: 10 }}>
+                  {state.depots.map((d) => (
+                    <label key={d.id}>
+                      <input type="checkbox" checked={eventDepots.includes(d.id)} onChange={() => toggleFrom(eventDepots, setEventDepots, d.id)} />
+                      {d.name || d.id}
                     </label>
                   ))}
                 </div>
