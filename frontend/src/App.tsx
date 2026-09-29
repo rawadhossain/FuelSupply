@@ -182,16 +182,18 @@ export default function App() {
   }
 
   async function approve(rec: Recommendation) {
+    let acknowledged = false;
     if (rec.review === "HUMAN_REVIEW") {
       const ok = confirm(
         `This recommendation is flagged for human review (low confidence or fallback policy). ` +
           `Submit ${rec.action.quantity.toFixed(0)} L ${rec.fuel_type} to ${rec.station_id} anyway?`,
       );
       if (!ok) return;
+      acknowledged = true;
     }
     setExecuting(rec.id);
     try {
-      await executeRecommendation(rec);
+      await executeRecommendation(rec, acknowledged);
       setAssessment((prev) =>
         prev ? { ...prev, recommendations: prev.recommendations.filter((r) => r.id !== rec.id) } : prev,
       );

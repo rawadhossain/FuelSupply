@@ -7,6 +7,8 @@ from time import perf_counter
 import httpx
 from fastapi import FastAPI, HTTPException
 from fuelsupply_shared.observability import (
+    HUMAN_REVIEW_REQUESTS_TOTAL,
+    VALIDATION_REJECTIONS_TOTAL,
     log_decision,
     record_decision,
     record_fallback,
@@ -263,12 +265,22 @@ class ExecuteAllocationAction(BaseModel):
 class ExecuteRecommendationRequest(BaseModel):
     """Shape matches one entry of `/internal/recommendations`'s own
     `recommendations` list — a caller reads a recommendation, picks one, and
-    reposts its `station_id`/`fuel_type`/`action` back here unchanged."""
+    reposts its `id`/`station_id`/`fuel_type`/`action` back here unchanged.
 
+    `recommendation_id` is looked up against the copy Core itself cached when
+    it was issued (see redis_cache.cache_recommendation) — the human-review
+    gate (REQ-009c/REQ-019) is enforced against *that* stored copy, not
+    whatever the caller claims, so a client can't skip review just by
+    omitting or relabeling the field. `acknowledged` must be true for any
+    recommendation the cached copy marked HUMAN_REVIEW.
+    """
+
+    recommendation_id: str
     station_id: str
     fuel_type: str
     action: ExecuteAllocationAction
     intent: str = "intelligence-recommendation"
+    acknowledged: bool = False
 
 
 @app.post("/internal/recommendations")
@@ -345,15 +357,20 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
         set_degraded("core", True)
         fallback_recs = compute_fallback_recommendations(state)
         elapsed = perf_counter() - started
+        redis_cache: RedisStateCache = app.state.redis_cache
         for rec in fallback_recs:
-            record_decision(policy="core_fallback_heuristic", outcome=rec.get("review", "unknown"), seconds=elapsed)
+            outcome = rec.get("review", "unknown")
+            record_decision(policy="core_fallback_heuristic", outcome=outcome, seconds=elapsed)
             log_decision(
                 decision_id=rec.get("id", "unknown"),
                 policy="core_fallback_heuristic",
-                outcome=rec.get("review", "unknown"),
+                outcome=outcome,
                 station_id=rec.get("station_id"),
                 fuel_type=rec.get("fuel_type"),
             )
+            if outcome == "HUMAN_REVIEW":
+                HUMAN_REVIEW_REQUESTS_TOTAL.labels(reason="core_fallback_heuristic").inc()
+            await redis_cache.cache_recommendation(rec["id"], rec)
 
         session_factory = app.state.session_factory
         async with session_factory() as session:
@@ -373,15 +390,21 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
 
     elapsed = perf_counter() - started
     policy_used = assessment.get("policy", "unknown")
+    redis_cache: RedisStateCache = app.state.redis_cache
     for rec in assessment.get("recommendations", []):
-        record_decision(policy=policy_used, outcome=rec.get("review", "unknown"), seconds=elapsed)
+        outcome = rec.get("review", "unknown")
+        record_decision(policy=policy_used, outcome=outcome, seconds=elapsed)
         log_decision(
             decision_id=rec.get("id", "unknown"),
             policy=policy_used,
-            outcome=rec.get("review", "unknown"),
+            outcome=outcome,
             station_id=rec.get("station_id"),
             fuel_type=rec.get("fuel_type"),
         )
+        if outcome == "HUMAN_REVIEW":
+            HUMAN_REVIEW_REQUESTS_TOTAL.labels(reason=policy_used).inc()
+        if rec.get("id"):
+            await redis_cache.cache_recommendation(rec["id"], rec)
 
     session_factory = app.state.session_factory
     async with session_factory() as session:
@@ -402,9 +425,40 @@ async def get_recommendations(req: RecommendationsRequest | None = None) -> dict
 @app.post("/internal/allocations/execute")
 async def execute_recommendation(req: ExecuteRecommendationRequest) -> dict:
     """Executes one recommendation returned by `/internal/recommendations` —
-    the human-review step (REQ-009c/REQ-019): nothing is auto-submitted, a
-    caller must already have inspected the recommendation and chosen this one.
+    the human-review step (REQ-009c/REQ-019): nothing is auto-submitted, and
+    for a HUMAN_REVIEW recommendation the server enforces `acknowledged`
+    against its own cached copy of what was issued, not the caller's claim.
     """
+    redis_cache: RedisStateCache = app.state.redis_cache
+    cached = await redis_cache.get_recommendation(req.recommendation_id)
+    if cached is None:
+        VALIDATION_REJECTIONS_TOTAL.labels(source="allocation_execute", reason="unknown_recommendation").inc()
+        raise HTTPException(
+            404,
+            {"code": "RECOMMENDATION_NOT_FOUND", "message": "Unknown or expired recommendation — fetch recommendations again."},
+        )
+
+    cached_action = cached.get("action") or {}
+    if (
+        cached.get("station_id") != req.station_id
+        or cached.get("fuel_type") != req.fuel_type
+        or cached_action.get("source_depot_id") != req.action.source_depot_id
+        or cached_action.get("route_id") != req.action.route_id
+        or cached_action.get("quantity") != req.action.quantity
+    ):
+        VALIDATION_REJECTIONS_TOTAL.labels(source="allocation_execute", reason="recommendation_mismatch").inc()
+        raise HTTPException(
+            409,
+            {"code": "RECOMMENDATION_MISMATCH", "message": "Request doesn't match the recommendation as issued — fetch recommendations again."},
+        )
+
+    if cached.get("review") == "HUMAN_REVIEW" and not req.acknowledged:
+        VALIDATION_REJECTIONS_TOTAL.labels(source="allocation_execute", reason="human_review_required").inc()
+        raise HTTPException(
+            400,
+            {"code": "HUMAN_REVIEW_REQUIRED", "message": "This recommendation requires explicit human-review acknowledgment before execution."},
+        )
+
     supervisor: IngestionSupervisor = app.state.supervisor
     tick = supervisor.state.last_polled_tick
     if tick is None:
@@ -427,6 +481,7 @@ async def execute_recommendation(req: ExecuteRecommendationRequest) -> dict:
         status = getattr(exc, "status_code", None) or 502
         raise HTTPException(status, {"code": code, "message": str(exc)}) from exc
 
+    await redis_cache.consume_recommendation(req.recommendation_id)
     return allocation.model_dump(mode="json")
 
 

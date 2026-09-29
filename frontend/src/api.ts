@@ -100,14 +100,16 @@ export const getRecommendations = (policy: "heuristic" | "lp" = "heuristic", nar
     body: JSON.stringify({ policy, narrate }),
   });
 
-export const executeRecommendation = (rec: Recommendation) =>
+export const executeRecommendation = (rec: Recommendation, acknowledged: boolean) =>
   req<Allocation>("/api/internal/allocations/execute", {
     method: "POST",
     body: JSON.stringify({
+      recommendation_id: rec.id,
       station_id: rec.station_id,
       fuel_type: rec.fuel_type,
       action: rec.action,
       intent: `intelligence-${rec.policy}`,
+      acknowledged,
     }),
   });
 
