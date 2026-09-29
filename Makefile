@@ -49,3 +49,23 @@ demo-reset: ## Reset the simulator for a fresh demo run (reset, clear faults, ru
 	curl -sf -X POST http://localhost:$${SIMULATOR_PORT:-8000}/admin/faults/clear >/dev/null
 	curl -sf -X POST http://localhost:$${SIMULATOR_PORT:-8000}/admin/run >/dev/null
 	@echo "Simulator reset and running."
+
+scenario: ## Run a scenario: make scenario S=demand-spike ARGS="--seconds 30"
+	python ops/scenario-runner/scenario.py $(S) $(ARGS)
+
+scenarios: ## List available scenarios
+	python ops/scenario-runner/scenario.py list
+
+chaos-on: ## Route core's simulator calls through the chaos proxy
+	SIMULATOR_BASE_URL=http://chaos-proxy:8000 docker compose up -d --no-deps core
+	@echo "core now routes through chaos-proxy. Control it: curl -X POST localhost:$${CHAOS_PROXY_CONTROL_PORT:-8001}/__chaos -d '{\"mode\":\"corrupt_json\"}'"
+
+chaos-off: ## Restore core's direct connection to the simulator
+	docker compose up -d --no-deps core
+	@echo "core restored to direct simulator connection."
+
+evidence: ## Print files under docs/evidence
+	@find docs/evidence -type f 2>/dev/null | sort
+
+dispatch: ## Run the temporary baseline-dispatch stand-in
+	python ops/scenario-runner/scenario.py baseline-dispatch $(ARGS)
