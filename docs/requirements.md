@@ -1,0 +1,51 @@
+# Requirements
+
+Derived from `docs/problem.md` (official statement + simulator guide). Team decisions on how to build them are in `/SPEC.md` and `docs/decisions.md`; SPEC.md adds no requirement beyond the official documents except that it puts LLM narration in scope (REQ-035) and CI on GitHub Actions (REQ-020). One testable requirement per row. Priority: **MUST** (required for a viable submission), **SHOULD** (recommended, score-additive), **COULD** (optional/advanced, only if time remains).
+
+## MUST — mandatory for a viable submission
+
+| ID | Type | Description | Source | Acceptance criteria | Dependencies | Status |
+|---|---|---|---|---|---|---|
+| REQ-001 | UX | Operator app shows a meaningful subset of: inventory, depot/station status, regional demand, shortage alerts, projected risk, incoming supply, disruptions, recommended allocations, expected impact, alerts, decision history, service health. | Problem §6 | A judge can open the app and see live simulator-derived state for ≥6 of the 12 listed items without reading code. | REQ-002 | UNPLANNED |
+| REQ-002 | API/Integration | Backend ingests simulator state via REST (`/v1/instance`, `/v1/depots`, `/v1/stations`, `/v1/routes`, `/v1/supply-arrivals`, `/v1/demand-history`, `/v1/events`, `/v1/allocations`, `/v1/metrics`), on a poll cycle and/or SSE-triggered refresh. | Guide §4 | Given the simulator running, backend's internal state matches a fresh `GET` of each endpoint within one poll interval. | — | UNPLANNED |
+| REQ-003 | API/Integration | SSE (`/v1/stream`) is consumed only as a "something changed" signal; every event triggers a REST re-GET of the affected resource. No decision or displayed state is derived directly from an SSE payload. | Guide §6, Hard rule | Given an `allocation.status_changed` SSE event, the app's displayed allocation state is confirmed by a REST GET, not solely the SSE body. | REQ-002 | UNPLANNED |
+| REQ-004 | Resilience | SSE reconnect (including after `stream_disconnect` fault clears, or queue overflow) triggers a full REST resync; system keeps functioning on REST polling alone while SSE is unavailable. | Guide §6.2, §6.4 | Given a `stream_disconnect` fault active for N seconds, dashboard state continues updating (via polling) and catches up fully once SSE reconnects. | REQ-003 | UNPLANNED |
+| REQ-005 | API/Integration | All fuel replenishment decisions are written via `POST /v1/allocations` only, with a permanently-unique `idempotency_key`, correct handling of 201/200 replay, 404, 409 (all 8 documented conflict codes), and 422. | Guide §5 | Given a retried identical allocation request, exactly one allocation exists in `/v1/allocations` and the client receives the existing record, not a duplicate or error. | REQ-002 | UNPLANNED |
+| REQ-006 | API/Integration | Allocation cancellation via `POST /v1/allocations/{id}/cancel` is supported for PENDING allocations where the operator/system needs to retract a recommendation before departure. | Guide §5.5 | Given a PENDING allocation, cancel returns 200 and depot inventory is refunded per a follow-up GET. | REQ-005 | UNPLANNED |
+| REQ-007 | AI | At least one meaningful intelligence capability implemented from Prediction, Detection, Decision Intelligence, or Generative AI. | Problem §7 | A named model/heuristic/optimizer produces an artifact (forecast, risk score, allocation recommendation, or explanation) visible in the app, traceable to specific input signals. | REQ-002 | UNPLANNED |
+| REQ-008 | AI | Allocation recommendations are inspectable: show at-risk signal(s), relevant constraint(s), expected impact, confidence/uncertainty, and at least one alternative when generating a "should allocate X" recommendation. | Problem §9 | Given a generated recommendation, the UI/API response includes station, fuel, projected stockout timing, recommended source+quantity, and expected before/after risk. | REQ-007 | UNPLANNED |
+| REQ-009 | Resilience | Explicit fallback behavior implemented for: (a) prediction/ML unavailable → deterministic fallback policy; (b) invalid/malformed simulator response → reject + raise alert, don't corrupt state; (c) low prediction confidence → flagged for human review instead of auto-acting; (d) simulator/backend dependency unavailable → retry+backoff, serve cached/last-known-good state, enter a visibly degraded mode. | Problem §11 | Each of the 4 conditions can be triggered (e.g., via `/admin/faults`) and produces the documented, observable behavior — not a crash or silent stall. | REQ-002, REQ-007 | UNPLANNED |
+| REQ-010 | API/Integration | Client correctly distinguishes and handles both simulator error envelopes: `{"detail": {...}}` (validation/4xx) and `{"error": {...}}` (`FAULT_INJECTED` 503s), plus `X-Simulator-Stale: true` header on any `/v1/*` GET. | Guide §9 | Given a `stale_data` fault, the app visibly flags the affected data as stale rather than treating it as fresh. | REQ-002 | UNPLANNED |
+| REQ-011 | Demo | System demonstrates detect → evaluate → respond → explain → recover for at least one crisis type (`demand_spike`, `route_disruption`, `station_outage`, `depot_constraint`, `shipment_delay`, or `supply_shortfall`), ideally a combined crisis. | Problem §10 | An injected event produces a visible risk/alert change, a corresponding allocation-recommendation change, and a visible recovery once the event resolves. | REQ-007, REQ-009 | UNPLANNED |
+| REQ-012 | Non-functional | Reproducible deployment: `docker compose up` (or documented equivalent) brings up the simulator + our stack + a passing health check. | Problem §12 | A clean machine can clone the repo, run the documented command, and reach a working app + `/health` within a stated time budget. | — | UNPLANNED |
+| REQ-013 | Non-functional | Observability: request rate, latency (incl. p95), error rate, and service availability are captured for the backend; intelligence-layer metrics (prediction error/confidence, alert rate, decision frequency, fallback-activation count) are captured; important actions/integration failures/decisions/recoveries are logged. | Problem §14 | Metrics/logs are inspectable during/after a demo run (dashboard, log file, or `/metrics` endpoint) and show real numbers, not placeholders. | REQ-002, REQ-007, REQ-009 | UNPLANNED |
+| REQ-014 | Non-functional | Health/status view exposes per-component health (backend, simulator connectivity, prediction/decision engine) plus p95 latency and error rate in a judge-legible form. | Problem §15 | A single screen or endpoint answers "is the system healthy right now?" without reading logs. | REQ-013 | UNPLANNED |
+| REQ-015 | Non-functional | Load test executed against ≥1 meaningful path (decision/allocation API, simulator integration, or an e2e decision request), reporting avg/p50/p95/p99 latency, throughput, error rate, concurrency, resource usage. | Problem §17 | `docs/verification.md` contains a load-test run with a workload definition and the above measurements. | REQ-002 or REQ-005 | UNPLANNED |
+| REQ-016 | Non-functional | No hard-coded secrets; external input (including simulator responses) validated; failed requests handled without crashing; required configuration documented (env vars, ports); credentials never exposed; sensitive operator actions (e.g., manual allocation override) gated appropriately. | Problem §18 | Repo has no committed secrets, a documented `.env.example` (if any config needed), and input validation on any user- or simulator-supplied data reaching the backend. | — | UNPLANNED |
+| REQ-017 | Submission | Deliverables present: working app, source repo w/ setup instructions, simulator integration, intelligence component, operator interface, architecture diagram, deployment method, observability evidence, resilience demonstration, load-test evidence, demo readiness. | Problem §19 | Each of the 11 listed deliverables has a corresponding artifact or doc reference before submission. | ALL ABOVE | UNPLANNED |
+
+## SHOULD — recommended, score-additive
+
+| ID | Type | Description | Source | Priority driver |
+|---|---|---|---|---|
+| REQ-020 | Non-functional | CI/CD pipeline (lint, test, build, push) on GitHub Actions (ADR-002). | Problem §12, §20; SPEC.md §6 | DevOps & Engineering Quality (15%) |
+| REQ-021 | Non-functional | Automated tests for allocation validation logic and simulator client resilience paths. | Problem §20 | Architecture & Integration, DevOps |
+| REQ-022 | Data | Decision audit history persisted (our own recommendation + rationale + outcome), distinct from the simulator's own allocation ledger. | Problem §9, §20 | Intelligence & Decision Quality |
+| REQ-023 | Non-functional | Deployment versioning (image tags / release notes). | Problem §20 | DevOps |
+| REQ-024 | Data | Scenario configuration / simulation replay support for demo rehearsal (e.g., scripted `/admin/step` + `/admin/events` sequences). | Problem §20 | Demo & Problem Understanding |
+| REQ-025 | Resilience | Automated fallback activation is surfaced in the UI in real time (not just in logs). | Problem §11, §20 | Resilience & Incident Response |
+| REQ-026 | Non-functional | Prometheus/Grafana (or equivalent) dashboards beyond a minimal `/metrics`/`/status` page. | Problem §14 | Observability & Performance |
+
+## COULD — optional/advanced, only if MVP + SHOULD items are done and verified
+
+| ID | Description | Source |
+|---|---|---|
+| REQ-030 | Reinforcement learning for allocation/sequential decisions, with a documented comparison against the rule-based/optimization baseline. | Problem §8 |
+| REQ-031 | Multi-agent decision systems. | Problem §21 |
+| REQ-032 | Optimization + ML hybrid policies. | Problem §21 |
+| REQ-033 | Uncertainty-aware allocation / counterfactual simulation. | Problem §21 |
+| REQ-034 | Kubernetes deployment, autoscaling, blue/green or canary rollout. | Problem §13, §21 |
+| REQ-035 | LLM narration of finished recommendations via Anthropic API (in scope per ADR-005; narration only, never decision-making, must have a template fallback). An investigation-Q&A assistant beyond narration remains optional. | Problem §7, §21; SPEC.md §6 |
+| REQ-036 | Distributed tracing (OpenTelemetry/Jaeger). | Problem §14 |
+
+Types: Functional, AI, API/Integration, UX, Data, Non-functional, Demo, Submission.
